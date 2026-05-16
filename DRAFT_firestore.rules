@@ -1,0 +1,168 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Role-based Access Control
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function getRoleData(roleId) {
+      return get(/databases/$(database)/documents/roles/$(roleId)).data;
+    }
+
+    function hasPermission(module, action) {
+      let userData = getUserData();
+      let roleData = getRoleData(userData.roleId);
+      return roleData.permissions[module][action] == true;
+    }
+
+    // --- Entity Validations ---
+
+    function isValidReceipt(data) {
+      return data.id is string && data.id.size() <= 64 &&
+             data.customer is string && data.customer.size() <= 200 &&
+             data.consignee is string && data.consignee.size() <= 200 &&
+             data.consignor is string && data.consignor.size() <= 200 &&
+             data.totalQty is number &&
+             data.totalCBM is number &&
+             data.totalWeight is number;
+    }
+
+    function isValidManifest(data) {
+      return data.id is string && data.id.size() <= 64 &&
+             data.pol is string && data.pol.size() <= 100 &&
+             data.pod is string && data.pod.size() <= 100 &&
+             data.totalCBM is number &&
+             data.totalWeight is number;
+    }
+
+    function isValidActivityLog(data) {
+      return data.id is string &&
+             data.action is string && data.action.size() <= 100 &&
+             data.module is string && data.module.size() <= 100 &&
+             data.username is string && data.username.size() <= 100 &&
+             data.date is string;
+    }
+
+    // --- Collections ---
+
+    match /receipts/{receiptId} {
+      allow read: if isSignedIn() && hasPermission('receipts', 'view');
+      allow create: if isSignedIn() && hasPermission('receipts', 'create') && isValidReceipt(incoming());
+      allow update: if isSignedIn() && hasPermission('receipts', 'edit') && isValidReceipt(incoming());
+      allow delete: if isSignedIn() && hasPermission('receipts', 'delete');
+    }
+
+    match /pickups/{pickupId} {
+      allow read: if isSignedIn() && hasPermission('pickups', 'view');
+      allow create: if isSignedIn() && hasPermission('pickups', 'create');
+      allow update: if isSignedIn() && hasPermission('pickups', 'edit');
+      allow delete: if isSignedIn() && hasPermission('pickups', 'delete');
+    }
+
+    match /manifests/{manifestId} {
+      allow read: if isSignedIn() && hasPermission('manifests', 'view');
+      allow create: if isSignedIn() && hasPermission('manifests', 'create') && isValidManifest(incoming());
+      allow update: if isSignedIn() && hasPermission('manifests', 'edit') && isValidManifest(incoming());
+      allow delete: if isSignedIn() && hasPermission('manifests', 'delete');
+    }
+
+    match /returns/{returnId} {
+      allow read: if isSignedIn() && hasPermission('inventory', 'view');
+      allow create: if isSignedIn() && hasPermission('inventory', 'create');
+      allow update: if isSignedIn() && hasPermission('inventory', 'edit');
+      allow delete: if isSignedIn() && hasPermission('inventory', 'delete');
+    }
+
+    match /breakbulks/{breakbulkId} {
+      allow read: if isSignedIn() && hasPermission('breakbulks', 'view');
+      allow create: if isSignedIn() && hasPermission('breakbulks', 'create');
+      allow update: if isSignedIn() && hasPermission('breakbulks', 'edit');
+    }
+
+    match /haulierBookings/{bookingId} {
+      allow read: if isSignedIn() && hasPermission('haulier_bookings', 'view');
+      allow create: if isSignedIn() && hasPermission('haulier_bookings', 'create');
+      allow update: if isSignedIn() && hasPermission('haulier_bookings', 'edit');
+    }
+
+    match /fclTemplates/{templateId} {
+      allow read: if isSignedIn() && hasPermission('fcl_templates', 'view');
+      allow create: if isSignedIn() && hasPermission('fcl_templates', 'create');
+      allow update: if isSignedIn() && hasPermission('fcl_templates', 'edit');
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || hasPermission('master_data', 'view'));
+      allow create, update, delete: if isSignedIn() && hasPermission('master_data', 'edit');
+    }
+
+    match /roles/{roleId} {
+      allow read: if isSignedIn() && hasPermission('master_data', 'view');
+      allow write: if isSignedIn() && hasPermission('master_data', 'edit');
+    }
+
+    match /companies/{companyId} {
+      allow read: if isSignedIn() && hasPermission('master_data', 'view');
+      allow write: if isSignedIn() && hasPermission('master_data', 'edit');
+    }
+
+    match /ports/{portId} {
+      allow read: if isSignedIn() && hasPermission('master_data', 'view');
+      allow write: if isSignedIn() && hasPermission('master_data', 'edit');
+    }
+
+    match /warehouses/{warehouseId} {
+      allow read: if isSignedIn() && hasPermission('master_data', 'view');
+      allow write: if isSignedIn() && hasPermission('master_data', 'edit');
+    }
+
+    match /containerTypes/{typeId} {
+      allow read: if isSignedIn() && hasPermission('master_data', 'view');
+      allow write: if isSignedIn() && hasPermission('master_data', 'edit');
+    }
+
+    match /activityLogs/{logId} {
+      allow read: if isSignedIn() && hasPermission('activity_logs', 'view');
+      allow create: if isSignedIn() && isValidActivityLog(incoming());
+      allow update, delete: if false; // Immutable logs
+    }
+
+    match /system/{docId} {
+      allow read, write: if isSignedIn(); // System docs like counters need access
+    }
+
+    match /notifications/{notifId} {
+      allow read, update, delete: if isSignedIn() && request.auth.uid == existing().userId;
+      allow create: if isSignedIn();
+    }
+  }
+}

@@ -1,0 +1,260 @@
+{
+  "entities": {
+    "Receipt": {
+      "title": "Shipment Receipt",
+      "description": "Represents a shipment stock-in record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "transactionType": { "type": "string" },
+        "company": { "type": "string" },
+        "transportArrangement": { "type": "string" },
+        "customer": { "type": "string" },
+        "consignee": { "type": "string" },
+        "consignor": { "type": "string" },
+        "pol": { "type": "string" },
+        "pod": { "type": "string" },
+        "consigneeDeliveryAddress": { "type": "string" },
+        "shipperDoNo": { "type": "string" },
+        "isUrgent": { "type": "boolean" },
+        "sendingType": { "type": "string" },
+        "puNo": { "type": "string" },
+        "totalQty": { "type": "number" },
+        "totalCBM": { "type": "number" },
+        "totalWeight": { "type": "number" },
+        "lines": { "type": "array" }
+      },
+      "required": ["id", "date", "customer", "consignee", "consignor"]
+    },
+    "Return": {
+      "title": "Return Note",
+      "description": "Represents a return of goods from inventory.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "receiptId": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "doNo": { "type": "string" },
+        "reason": { "type": "string" },
+        "totalReturnQty": { "type": "number" }
+      },
+      "required": ["id", "receiptId", "date"]
+    },
+    "Pickup": {
+      "title": "Pickup Request",
+      "description": "Represents a request to pick up goods from a location.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "customerName": { "type": "string" },
+        "consignorName": { "type": "string" },
+        "consigneeName": { "type": "string" },
+        "pickupPartyName": { "type": "string" },
+        "status": { "type": "string" },
+        "linkedSid": { "type": "string" },
+        "totalQty": { "type": "number" },
+        "totalCBM": { "type": "number" },
+        "totalWeight": { "type": "number" },
+        "lines": { "type": "array" }
+      },
+      "required": ["id", "date", "customerName", "consignorName"]
+    },
+    "Manifest": {
+      "title": "Manifest",
+      "description": "Represents a manifest of cargo loaded into a container or vessel.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "pol": { "type": "string" },
+        "pod": { "type": "string" },
+        "vessel": { "type": "string" },
+        "containerNo": { "type": "string" },
+        "status": { "type": "string" },
+        "totalCBM": { "type": "number" },
+        "totalWeight": { "type": "number" },
+        "lines": { "type": "array" }
+      },
+      "required": ["id", "date", "pol", "pod"]
+    },
+    "Company": {
+      "title": "Company Partner",
+      "description": "Represents a business partner (customer, consignee, consignor, transporter, haulier, etc.).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "isCustomer": { "type": "boolean" },
+        "isConsignee": { "type": "boolean" },
+        "isConsignor": { "type": "boolean" },
+        "isTransporter": { "type": "boolean" },
+        "isHaulier": { "type": "boolean" }
+      },
+      "required": ["id", "name"]
+    },
+    "Port": {
+      "title": "Port",
+      "description": "Represents a sea or air port.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "country": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "User": {
+      "title": "System User",
+      "description": "Represents an application user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "roleId": { "type": "string" },
+        "companyId": { "type": "string" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["id", "username", "roleId"]
+    },
+    "Role": {
+      "title": "User Role",
+      "description": "Represents a set of permissions.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "permissions": { "type": "object" }
+      },
+      "required": ["id", "name"]
+    },
+    "Warehouse": {
+      "title": "Warehouse",
+      "description": "Represents a physical storage facility.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "companyId": { "type": "string" }
+      },
+      "required": ["id", "name", "companyId"]
+    },
+    "ContainerType": {
+      "title": "Container Type",
+      "description": "Represents a type of shipping container (e.g., 20GP, 40HC).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "maxCbm": { "type": "number" },
+        "maxWeight": { "type": "number" }
+      },
+      "required": ["id", "type"]
+    },
+    "FclTemplate": {
+      "title": "FCL Cost Template",
+      "description": "Represents a template for FCL costs based on route.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "pol": { "type": "string" },
+        "pod": { "type": "string" },
+        "items": { "type": "array" }
+      },
+      "required": ["id", "name", "pol", "pod"]
+    },
+    "ContainerBooking": {
+      "title": "Container Booking",
+      "description": "Represents a booking with a shipping line.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "pol": { "type": "string" },
+        "pod": { "type": "string" },
+        "expectedSailingDate": { "type": "string", "format": "date" }
+      },
+      "required": ["id", "pol", "pod"]
+    },
+    "HaulierBooking": {
+      "title": "Haulier Booking",
+      "description": "Represents a booking with a haulier for container movement.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "haulierName": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "haulierName", "status"]
+    },
+    "CommercialInvoice": {
+      "title": "Commercial Invoice",
+      "description": "Represents a commercial invoice for custom clearance.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "invoiceDate": { "type": "string", "format": "date" },
+        "hblNo": { "type": "string" }
+      },
+      "required": ["id", "invoiceDate"]
+    },
+    "ActivityLog": {
+      "title": "Activity Log",
+      "description": "Represents a log of user actions in the system.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "action": { "type": "string" },
+        "module": { "type": "string" },
+        "recordId": { "type": "string" },
+        "username": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "action", "module", "username", "date"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Represents a system notification for a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "isRead": { "type": "boolean" }
+      },
+      "required": ["id", "userId", "date"]
+    },
+    "Breakbulk": {
+      "title": "Breakbulk Record",
+      "description": "Represents a split shipment record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "receiptId": { "type": "string" }
+      },
+      "required": ["id", "date", "receiptId"]
+    }
+  },
+  "firestore": {
+    "receipts": { "schema": "Receipt", "description": "Shipment Stock-in records" },
+    "returns": { "schema": "Return", "description": "Stock return records" },
+    "pickups": { "schema": "Pickup", "description": "Pickup request records" },
+    "manifests": { "schema": "Manifest", "description": "Loading manifests" },
+    "companies": { "schema": "Company", "description": "Business partners master data" },
+    "ports": { "schema": "Port", "description": "Ports master data" },
+    "users": { "schema": "User", "description": "System users master data" },
+    "roles": { "schema": "Role", "description": "User roles and permissions" },
+    "warehouses": { "schema": "Warehouse", "description": "Warehouses master data" },
+    "containerTypes": { "schema": "ContainerType", "description": "Container types master data" },
+    "fclTemplates": { "schema": "FclTemplate", "description": "FCL cost templates" },
+    "containerBookings": { "schema": "ContainerBooking", "description": "Container bookings with shipping lines" },
+    "haulierBookings": { "schema": "HaulierBooking", "description": "Haulier bookings" },
+    "commercialInvoices": { "schema": "CommercialInvoice", "description": "Commercial invoices" },
+    "activityLogs": { "schema": "ActivityLog", "description": "System activity audit trail" },
+    "notifications": { "schema": "Notification", "description": "User notifications" },
+    "breakbulks": { "schema": "Breakbulk", "description": "Breakbulk (split) shipment records" },
+    "system": { "schema": "object", "description": "System configuration and counters" }
+  }
+}

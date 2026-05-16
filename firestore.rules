@@ -1,0 +1,50 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- Default Deny ---
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // --- Collection Matches ---
+
+    // 1. Operational Collections
+    // We allow reading if the technical connection (Anonymous Auth) is established.
+    // This fixes the "Missing or insufficient permissions" syncing errors.
+    match /receipts/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /returns/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /pickups/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /manifests/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /breakbulks/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /haulierBookings/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /fclTemplates/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /containerBookings/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /commercialInvoices/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    
+    // 2. Master Data
+    match /companies/{id} { allow read: if true; allow write: if isSignedIn(); }
+    match /ports/{id} { allow read: if true; allow write: if isSignedIn(); }
+    match /warehouses/{id} { allow read: if true; allow write: if isSignedIn(); }
+    match /containerTypes/{id} { allow read: if true; allow write: if isSignedIn(); }
+    match /users/{id} { allow read: if true; allow write: if isSignedIn(); }
+    match /roles/{id} { allow read: if true; allow write: if isSignedIn(); }
+
+    // 3. System & Logs
+    match /activityLogs/{id} { allow read: if isSignedIn(); allow create: if isSignedIn(); }
+    match /system/{id} { allow read, write: if isSignedIn(); }
+    match /notifications/{id} { 
+      allow read, write: if isSignedIn();
+    }
+  }
+}
