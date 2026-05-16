@@ -1791,6 +1791,67 @@ const SystemAdminModule = () => {
     return <div className="p-8 text-center text-slate-500">Access Denied. SuperAdmin privileges required.</div>;
   }
 
+  const [showWipeModal, setShowWipeModal] = useState(false);
+  const [wipeQ1, setWipeQ1] = useState('');
+  const [wipeQ2, setWipeQ2] = useState('');
+  const [isWiping, setIsWiping] = useState(false);
+
+  const handleWipeData = async () => {
+    if (wipeQ1 !== '16091985' || wipeQ2 !== '22081964') {
+      showMessage('Security questions answered incorrectly. Wipe aborted.', 'error');
+      setShowWipeModal(false);
+      setWipeQ1('');
+      setWipeQ2('');
+      return;
+    }
+
+    if (!window.confirm("FINAL WARNING: This is irreversible and will delete ALL DATA across the system (except users and roles). Are you absolutely sure?")) {
+      return;
+    }
+
+    setIsWiping(true);
+    try {
+      const collectionsToWipe = [
+        'receipts', 'returns', 'pickups', 'manifests', 'warehouses', 
+        'containerTypes', 'fclTemplates', 'containerBookings', 'haulierBookings', 
+        'commercialInvoices', 'breakbulks', 'activityLogs', 'notifications',
+        'companies', 'ports', 'tariffs'
+      ];
+
+      const { getDocs, collection, deleteDoc } = await import('firebase/firestore');
+
+      for (const colName of collectionsToWipe) {
+        const querySnapshot = await getDocs(collection(db, colName));
+        for (const docSnapshot of querySnapshot.docs) {
+          await deleteDoc(docSnapshot.ref);
+        }
+      }
+
+      // Reset System Counters
+      const { doc, setDoc } = await import('firebase/firestore');
+      await setDoc(doc(db, 'system', 'counters'), {
+        receiptCountersMap: {},
+        hblCountersMap: {},
+        manifestCountersMap: {},
+        commercialInvoiceCountersMap: {},
+        returnCounter: 1,
+        breakbulkCounter: 1,
+        pickupCounter: 1,
+        bookingCounter: 1,
+        haulierCounter: 1
+      });
+
+      showMessage('System data wiped and counters reset successfully.', 'success');
+      setShowWipeModal(false);
+      setWipeQ1('');
+      setWipeQ2('');
+    } catch (e) {
+      console.error(e);
+      showMessage('Failed to wipe data: ' + e.message, 'error');
+    }
+    setIsWiping(false);
+  };
+
   const handleReset = (type, setCounter, dataList) => {
     if (dataList.length > 0) {
       if (!window.confirm(`WARNING: You have ${dataList.length} existing ${type} records. Resetting the counter will cause new records to generate duplicate IDs, which may severely corrupt your database.\n\nAre you absolutely sure you want to force reset the ${type} running numbers?`)) {
@@ -1901,6 +1962,85 @@ const SystemAdminModule = () => {
           </tbody>
         </table>
       </div>
+
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 mt-8">
+        <div className="flex items-start space-x-4">
+          <div className="p-3 bg-red-100 rounded-full text-red-600">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-red-800">Factory Reset / Wipe All Data</h3>
+            <p className="text-red-700 mt-2">
+              This action will permanently delete all operational records (Shipments, Returns, Manifests, Pickups, Bookings, etc.) and all master data (Companies, Ports, Container Types, etc.). The system counters will be reset to 1. User accounts and roles will be preserved.
+            </p>
+            <p className="text-red-800 font-bold mt-2">THIS ACTION IS COMPLETELY IRREVERSIBLE.</p>
+            <button 
+              onClick={() => setShowWipeModal(true)} 
+              className="mt-6 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-sm transition-colors uppercase tracking-wider"
+            >
+              Wipe System Data
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {showWipeModal && (
+        <div className="fixed inset-0 bg-slate-900/70 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center space-x-3 text-red-600 mb-6 pb-4 border-b border-red-100">
+              <ShieldAlert className="w-8 h-8" />
+              <h2 className="text-2xl font-bold">Security Verification</h2>
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-slate-600 font-medium mb-4">You must answer the security questions correctly to proceed with the data wipe.</p>
+              
+              <div>
+                <label className="block text-sm font-bold text-slate-800 mb-1">What is the primary architect's DOB?</label>
+                <input 
+                  type="password" 
+                  value={wipeQ1}
+                  onChange={(e) => setWipeQ1(e.target.value)}
+                  className="w-full p-3 border border-slate-300 rounded-lg focus:border-red-500 focus:ring-1 focus:ring-red-500 font-mono tracking-widest text-center"
+                  placeholder="DDMMYYYY"
+                />
+              </div>
+
+               <div>
+                <label className="block text-sm font-bold text-slate-800 mb-1">What is the primary architect's mother DOB?</label>
+                <input 
+                  type="password" 
+                  value={wipeQ2}
+                  onChange={(e) => setWipeQ2(e.target.value)}
+                  className="w-full p-3 border border-slate-300 rounded-lg focus:border-red-500 focus:ring-1 focus:ring-red-500 font-mono tracking-widest text-center"
+                  placeholder="DDMMYYYY"
+                />
+              </div>
+            </div>
+
+            <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end space-x-3">
+              <button 
+                onClick={() => {
+                  setShowWipeModal(false);
+                  setWipeQ1('');
+                  setWipeQ2('');
+                }}
+                disabled={isWiping}
+                className="px-5 py-2.5 rounded-lg font-medium text-slate-600 hover:bg-slate-100 border border-slate-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleWipeData}
+                disabled={isWiping}
+                className="px-5 py-2.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors uppercase tracking-wider flex items-center"
+              >
+                {isWiping ? 'WIPING DATA...' : 'VERIFY & WIPE NOW'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -6679,17 +6819,56 @@ const InboxSidebar = () => {
 };
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('omniMeshUser');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
+      } catch (e) {
+        console.error("Failed to parse user from local storage", e);
+      }
+    }
+    return null;
+  });
   const [activityLogs, setActivityLogs] = useState([]);
 
   // Removed anonymous auth as it is disabled by default
   useEffect(() => {
-    // Initialization can go here
-  }, []);
+    let timeoutId;
+    
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      if (currentUser) {
+        // 10 minutes = 600,000 ms
+        timeoutId = setTimeout(() => {
+          handleAuthLogout();
+          alert('You have been logged out due to inactivity.');
+        }, 600000);
+      }
+    };
+
+    if (currentUser) {
+      resetTimer();
+      window.addEventListener('mousemove', resetTimer);
+      window.addEventListener('keydown', resetTimer);
+      window.addEventListener('click', resetTimer);
+      window.addEventListener('scroll', resetTimer);
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('keydown', resetTimer);
+      window.removeEventListener('click', resetTimer);
+      window.removeEventListener('scroll', resetTimer);
+    };
+  }, [currentUser]);
   
   const handleAuthLogin = (user) => {
     const userWithSession = { ...user, loginTime: Date.now() };
     setCurrentUser(userWithSession);
+    localStorage.setItem('omniMeshUser', JSON.stringify(userWithSession));
     
     // Redirect logic
     if (user.isWarehouseOperator && user.roleId !== 'role-superadmin') {
@@ -6737,6 +6916,7 @@ export default function App() {
       console.error(err);
     }
 
+    localStorage.removeItem('omniMeshUser');
     setCurrentUser(null);
     setActiveTab('dashboard');
   };
