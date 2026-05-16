@@ -171,19 +171,19 @@ const DashboardView = () => {
 
   const assignedByRoute = {};
   (manifests || []).forEach(mnf => {
-    const route = `${mnf.pol || '-'} → ${mnf.pod || '-'}`;
-    if (!assignedByRoute[route]) assignedByRoute[route] = { qty: 0, cbm: 0, weight: 0 };
-    assignedByRoute[route].qty += (mnf.lines || []).reduce((s, l) => s + (l.loadQty || 0), 0);
-    assignedByRoute[route].cbm += (mnf.totalCBM || 0);
     if (mnf.type !== 'FCL') {
-        assignedByRoute[route].weight += (mnf.totalWeight || 0);
+      const route = `${mnf.pol || '-'} → ${mnf.pod || '-'}`;
+      if (!assignedByRoute[route]) assignedByRoute[route] = { qty: 0, cbm: 0, weight: 0 };
+      assignedByRoute[route].qty += (mnf.lines || []).reduce((s, l) => s + (l.loadQty || 0), 0);
+      assignedByRoute[route].cbm += (mnf.totalCBM || 0);
+      assignedByRoute[route].weight += (mnf.totalWeight || 0);
     }
   });
 
   const timeframeReceipts = (receipts || []).filter(r => isWithinTimeframe(r.date, dashboardTimeframe));
   const timeframeManifests = (manifests || []).filter(m => isWithinTimeframe(m.date, dashboardTimeframe));
   const receivedCBM = timeframeReceipts.reduce((sum, r) => sum + (r.totalCBM || 0), 0);
-  const assignedCBM = timeframeManifests.reduce((sum, m) => sum + (m.totalCBM || 0), 0);
+  const assignedCBM = timeframeManifests.filter(m => m.type !== 'FCL').reduce((sum, m) => sum + (m.totalCBM || 0), 0);
   
   const calendarBookings = React.useMemo(() => {
     const dates = {};
@@ -197,15 +197,18 @@ const DashboardView = () => {
       let assignedCbm = 0;
       let assignedWeight = 0;
       
-      (manifests || []).filter(m => m.bookingId === b.id).forEach(m => {
+      (manifests || []).filter(m => m.bookingId && m.bookingId.startsWith(b.id + '::')).forEach(m => {
+        if (m.type !== 'FCL') {
           assignedCbm += (m.totalCBM || 0);
           assignedWeight += (m.totalWeight || 0);
+        }
       });
       
       let maxCbm = 0;
       let maxWeight = 0;
       let hasLCL = false;
       let hasFCL = false;
+      let fclContainersCount = 0;
 
       b.containers.forEach(c => {
          if (c.usageType === 'LCL') {
@@ -214,6 +217,7 @@ const DashboardView = () => {
              maxWeight += (parseFloat(containerTypes?.find(t => t.type === c.containerTypeId)?.maxWeight) || 0);
          } else {
              hasFCL = true;
+             fclContainersCount++;
          }
       });
       
@@ -222,9 +226,12 @@ const DashboardView = () => {
          route,
          hasLCL,
          hasFCL,
+         fclContainersCount,
          customer: (companies?.find(c => c.id === b.linerBrokerId)?.name || b.linerBrokerId),
          assignedCbm,
          assignedWeight,
+         maxCbm,
+         maxWeight,
          occCbm: maxCbm > 0 ? ((assignedCbm / maxCbm) * 100).toFixed(1) : 0,
          occWeight: maxWeight > 0 ? ((assignedWeight / maxWeight) * 100).toFixed(1) : 0
       });
@@ -304,7 +311,7 @@ const DashboardView = () => {
           </div>
           <div className="flex items-center space-x-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
             <div className="p-3 bg-teal-100 text-teal-600 rounded-lg"><Container className="w-6 h-6"/></div>
-            <div><p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Assigned in Manifests</p><p className="text-2xl font-black text-slate-800">{assignedCBM.toFixed(3)}</p></div>
+            <div><p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">LCL Assigned in Manifests</p><p className="text-2xl font-black text-slate-800">{assignedCBM.toFixed(3)}</p></div>
           </div>
         </div>
       </div>
@@ -334,7 +341,7 @@ const DashboardView = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-slate-100 bg-slate-50">
-            <h3 className="text-lg font-semibold text-slate-800">Assigned to Manifests</h3>
+            <h3 className="text-lg font-semibold text-slate-800">LCL Cargo Assigned to Manifests</h3>
           </div>
           <div className="overflow-x-auto flex-1">
             <table className="w-full text-left">
@@ -383,7 +390,7 @@ const DashboardView = () => {
                                    </div>
                                    <div className="text-xs text-slate-600 flex justify-between items-center mt-1">
                                       <span className="font-semibold text-slate-700 truncate max-w-[150px]">{it.customer}</span>
-                                      <span>Containers: <strong className="text-slate-800">{it.booking.containers?.length || 0}</strong></span>
+                                      <span>Containers: <strong className="text-slate-800">{it.fclContainersCount}</strong></span>
                                    </div>
                                 </div>
                              ))}
@@ -402,18 +409,20 @@ const DashboardView = () => {
                                    </div>
                                    <div className="grid grid-cols-2 gap-2 mt-2">
                                      <div className="bg-slate-50 p-2 border border-slate-100 rounded">
-                                        <p className="text-[10px] uppercase text-slate-400 font-bold">Assigned CBM</p>
+                                        <p className="text-[10px] uppercase text-slate-400 font-bold">Assigned / Max CBM</p>
                                         <div className="flex items-end justify-between">
-                                          <p className="font-bold text-slate-700">{Number(it.assignedCbm).toFixed(2)}</p>
+                                          <p className="font-bold text-slate-700">{Number(it.assignedCbm).toFixed(2)} / {Number(it.maxCbm).toFixed(2)}</p>
                                           <span className={`text-xs font-bold leading-none ${Number(it.occCbm) > 90 ? 'text-red-600' : Number(it.occCbm) > 60 ? 'text-orange-500' : 'text-emerald-600'}`}>{it.occCbm}%</span>
                                         </div>
+                                        <p className="text-[10px] font-semibold text-emerald-600 mt-1">Bal: {Math.max((Number(it.maxCbm) - Number(it.assignedCbm)), 0).toFixed(2)}</p>
                                      </div>
                                      <div className="bg-slate-50 p-2 border border-slate-100 rounded">
-                                        <p className="text-[10px] uppercase text-slate-400 font-bold">Assigned WGT</p>
+                                        <p className="text-[10px] uppercase text-slate-400 font-bold">Assigned / Max WGT</p>
                                         <div className="flex items-end justify-between">
-                                          <p className="font-bold text-slate-700">{Number(it.assignedWeight).toFixed(0)}</p>
+                                          <p className="font-bold text-slate-700">{Number(it.assignedWeight).toFixed(0)} / {Number(it.maxWeight).toFixed(0)}</p>
                                           <span className={`text-xs font-bold leading-none ${Number(it.occWeight) > 90 ? 'text-red-600' : Number(it.occWeight) > 60 ? 'text-orange-500' : 'text-emerald-600'}`}>{it.occWeight}%</span>
                                         </div>
+                                        <p className="text-[10px] font-semibold text-emerald-600 mt-1">Bal: {Math.max((Number(it.maxWeight) - Number(it.assignedWeight)), 0).toFixed(0)}</p>
                                      </div>
                                    </div>
                                 </div>
@@ -1963,7 +1972,6 @@ const PickupForm = () => {
   const isLinked = !!formData.linkedSid;
 
   const savePickup = () => {
-    if (isLinked) return showMessage("Cannot save while linked. Please unlink first to make edits.");
     if (!formData.customerId) return showMessage("Customer is required.");
     if (!formData.consignorId) return showMessage("Consignor is required.");
 
@@ -3120,7 +3128,7 @@ const ManifestForm = () => {
           pol: m.pol, pod: m.pod, containerNo: m.containerNo || '', sealNo: m.sealNo || '', 
           jobNo: m.jobNo || '', bookingId: m.bookingId || '', vessel: m.vessel || '', voyage: m.voyage || '',
           type: m.type || 'LCL', fclCustomer: m.fclCustomer || '', consignee: m.consignee || '', consignor: m.consignor || '',
-          totalCBM: m.totalCBM || ''
+          totalCBM: m.totalCBM || '', etd: m.etd || '', eta: m.eta || ''
         });
         setManifestItems(m.lines || []);
         setFclProducts(m.fclProducts || []);
@@ -3669,10 +3677,16 @@ const ManifestForm = () => {
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col h-[600px]">
             <div className="flex justify-between items-center mb-4 border-b pb-2">
               <h3 className="text-lg font-semibold text-slate-800">Master Manifest</h3>
-              <div className="text-right text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded">
-                <span className={cbmColor}>Total {masterCBM} cbm {maxCbm > 0 ? `/ ${maxCbm} container cbm capacity` : ''}</span>
-                <span className="mx-2 text-slate-300">|</span>
-                <span className={wgtColor}>{masterWeight} kg {maxWgt > 0 ? `/ ${maxWgt} container weight capacity` : ''}</span>
+              <div className="text-right text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded flex items-center space-x-2">
+                <div>
+                  <span className={cbmColor}>Total {masterCBM} cbm {maxCbm > 0 ? `/ ${maxCbm} container max` : ''}</span>
+                  {maxCbm > 0 && <span className="block text-[10px] text-emerald-600 font-bold text-right pt-0.5">Bal: {Math.max(maxCbm - cbmNum, 0).toFixed(3)} cbm</span>}
+                </div>
+                <span className="text-slate-300 px-1">|</span>
+                <div>
+                  <span className={wgtColor}>{masterWeight} kg {maxWgt > 0 ? `/ ${maxWgt} container max` : ''}</span>
+                  {maxWgt > 0 && <span className="block text-[10px] text-emerald-600 font-bold text-right pt-0.5">Bal: {Math.max(maxWgt - wgtNum, 0).toFixed(2)} kg</span>}
+                </div>
               </div>
             </div>
             <div className="overflow-y-auto flex-1">
@@ -4085,8 +4099,8 @@ const ManifestList = () => {
                       </div>
                    </td>
                   <td className="p-4 text-sm text-right leading-tight">
-                     <div className={cbmColor}>{m.totalCBM.toFixed(3)} m³ {maxCbm > 0 ? <span className="text-[10px] text-slate-400 block font-normal">/ {maxCbm} max</span> : ''}</div>
-                     <div className={`mt-1 ${wgtColor}`}>{m.totalWeight.toFixed(2)} kg {maxWgt > 0 ? <span className="text-[10px] text-slate-400 block font-normal">/ {maxWgt} max</span> : ''}</div>
+                     <div className={cbmColor}>{m.totalCBM.toFixed(3)} m³ {maxCbm > 0 ? <span className="text-[10px] text-slate-400 block font-normal">/ {maxCbm} max <br/><span className="text-emerald-600 font-semibold mt-0.5 inline-block">Bal: {Math.max(maxCbm - m.totalCBM, 0).toFixed(3)}</span></span> : ''}</div>
+                     <div className={`mt-1 ${wgtColor}`}>{m.totalWeight.toFixed(2)} kg {maxWgt > 0 ? <span className="text-[10px] text-slate-400 block font-normal">/ {maxWgt} max <br/><span className="text-emerald-600 font-semibold mt-0.5 inline-block">Bal: {Math.max(maxWgt - m.totalWeight, 0).toFixed(2)}</span></span> : ''}</div>
                   </td>
                   <td className="p-4 text-sm text-center">
                     <div className="flex justify-center space-x-2 mb-2">
@@ -4190,7 +4204,7 @@ const HaulierBookingForm = () => {
     // Attempt to guess customer if FCL
     let customerName = '';
     if (container.usageType === 'FCL') {
-        const manifest = (manifests || []).find(m => m.bookingId === b.id && m.containerNo === container.containerNo);
+        const manifest = (manifests || []).find(m => m.bookingId === `${b.id}::${container.id}`);
         if (manifest) {
             customerName = manifest.fclCustomer || '';
         }
@@ -4775,8 +4789,8 @@ const ContainerBookingList = () => {
           <tbody className="divide-y divide-slate-100">
             {(containerBookings || []).map(b => {
               const mList = (manifests || []).filter(m => m.bookingId && m.bookingId.startsWith(b.id + '::'));
-              const totalManifestCbm = mList.reduce((acc, m) => acc + (m.lines || []).reduce((sum, l) => sum + ((parseFloat(l.loadQty) || 0) * (parseFloat(l.unitCbm) || 0)), 0), 0);
-              const totalManifestWgt = mList.reduce((acc, m) => acc + (m.lines || []).reduce((sum, l) => sum + ((parseFloat(l.loadQty) || 0) * (parseFloat(l.unitWeight) || 0)), 0), 0);
+              const totalManifestCbm = mList.reduce((acc, m) => acc + (m.totalCBM || 0), 0);
+              const totalManifestWgt = mList.reduce((acc, m) => acc + (m.totalWeight || 0), 0);
               
               let maxCbm = 0;
               let maxWgt = 0;

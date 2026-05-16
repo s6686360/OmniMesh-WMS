@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 @media print {
-  @page { margin: 0; size: auto; }
-  @page letter-page { margin: 0; size: letter portrait; }
-  @page a6-page { margin: 0; size: a6 portrait; }
+  @page { margin: 10mm; size: auto; }
+  @page a4-page { margin: 15mm; size: a4 portrait; }
+  @page a6-page { margin: 5mm; size: a6 portrait; }
 
   html, body, #root, .h-screen {
     height: auto !important;
@@ -30,8 +30,9 @@
     width: auto !important;
   }
   .a4-page { 
-    page: letter-page !important; 
+    page: a4-page !important; 
     margin: 0 !important; 
+    padding: 0 !important;
     border: none !important; 
     box-shadow: none !important; 
     width: 100% !important; 

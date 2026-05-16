@@ -120,6 +120,7 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
             manifestId: m.id,
             originalLineId: idx, // Not tied to receipt
             receiptId: 'FCL-' + m.id,
+            type: 'FCL',
             product: p.description,
             uom: p.uom || 'Carton',
             qty: p.qty,
@@ -140,6 +141,7 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
             manifestId: m.id,
             originalLineId: l.originalLineId,
             receiptId: l.receiptId,
+            type: 'LCL',
             product: l.product,
             uom: l.uom,
             qty: l.loadQty,
@@ -279,12 +281,14 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
            totalValue: 0,
            manifestId: 'MERGED', // we lose individual traceability to simplify
            receiptId: 'MERGED',
+           type: l.type,
            customer: l.customer,
            consignee: l.consignee,
            consignor: l.consignor,
            shipperDoNo: l.shipperDoNo
         };
       } else {
+        if (groups[code].type !== l.type && l.type) if(!groups[code].type?.includes(l.type)) groups[code].type += `, ${l.type}`;
         if (groups[code].uom !== l.uom) groups[code].uom = 'Unit'; // fallback if mixed UOM
         if (groups[code].product !== l.product) groups[code].product += `, ${l.product}`;
         if (groups[code].customer !== l.customer) groups[code].customer += `, ${l.customer || ''}`;
@@ -507,6 +511,7 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
                  return (
                    <tr key={idx} className="hover:bg-slate-50">
                      <td className="p-2 text-xs text-slate-600 leading-relaxed border-r border-slate-100">
+                        {line.type && <div className="mb-1"><span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${line.type.includes('FCL') ? 'bg-indigo-100 text-indigo-700' : 'bg-orange-100 text-orange-700'}`}>{line.type}</span></div>}
                         <div><strong className="text-slate-700 mr-1">SID:</strong>{line.receiptId !== 'MERGED' ? line.receiptId : 'MERGED'}</div>
                         <div><strong className="text-slate-700 mr-1">Customer:</strong>{line.customer || '-'}</div>
                         <div><strong className="text-slate-700 mr-1">Consignor:</strong>{line.consignor || '-'}</div>
