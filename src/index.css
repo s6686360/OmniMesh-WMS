@@ -1,1 +1,54 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@media print {
+  @page { margin: 0; size: auto; }
+  @page letter-page { margin: 0; size: letter portrait; }
+  @page a6-page { margin: 0; size: a6 portrait; }
+
+  html, body, #root, .h-screen {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .main-app-container, .no-print {
+    display: none !important;
+  }
+  .print-safe-modal.no-print {
+    display: flex !important;
+  }
+  .print-safe-modal {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    width: auto !important;
+  }
+  .a4-page { 
+    page: letter-page !important; 
+    margin: 0 !important; 
+    border: none !important; 
+    box-shadow: none !important; 
+    width: 100% !important; 
+    min-height: auto !important;
+    break-after: page;
+  }
+  .a6-label { 
+    page: a6-page !important; 
+    margin: 0 !important; 
+    border: none !important; 
+    box-shadow: none !important; 
+    width: 100% !important; 
+    min-height: auto !important;
+    break-after: page;
+  }
+  body * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

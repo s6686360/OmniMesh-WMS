@@ -45,10 +45,19 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
     } else {
       setSelectingManifests(true);
     }
-  }, [editCommercialInvoiceId, commercialInvoices]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editCommercialInvoiceId]);
+
+  const usedManifestIds = new Set();
+  (commercialInvoices || []).forEach(ci => {
+    if (ci.id !== editCommercialInvoiceId && ci.manifestIds) {
+      ci.manifestIds.forEach(id => usedManifestIds.add(id));
+    }
+  });
+  const availableManifests = (manifests || []).filter(m => !usedManifestIds.has(m.id));
 
   const toggleManifestSelection = (mId) => {
-    const manifestToToggle = (manifests || []).find(m => m.id === mId);
+    const manifestToToggle = availableManifests.find(m => m.id === mId);
     if (!manifestToToggle) return;
 
     if (selectedManifestIds.includes(mId)) {
@@ -56,7 +65,7 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
     } else {
       // Validate POL, POD, BL match if we already have selected manifests
       if (selectedManifestIds.length > 0) {
-        const firstM = (manifests || []).find(m => m.id === selectedManifestIds[0]);
+        const firstM = availableManifests.find(m => m.id === selectedManifestIds[0]);
         if (firstM) {
           if (firstM.blNo !== manifestToToggle.blNo || firstM.pol !== manifestToToggle.pol || firstM.pod !== manifestToToggle.pod) {
             return showMessage("Selected manifests must have the same POL, POD and Master BL Number.", "error");
@@ -68,23 +77,23 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
   };
 
   const handleSelectAll = () => {
-    if ((manifests || []).length === 0) return;
+    if (availableManifests.length === 0) return;
     
     let baseM = null;
     if (selectedManifestIds.length > 0) {
-      baseM = (manifests || []).find(m => m.id === selectedManifestIds[0]);
+      baseM = availableManifests.find(m => m.id === selectedManifestIds[0]);
     } else {
-      baseM = (manifests || [])[0];
+      baseM = availableManifests[0];
     }
     
     if (!baseM) return;
 
-    const matchingManifestIds = (manifests || [])
+    const matchingManifestIds = availableManifests
       .filter(m => m.pol === baseM.pol && m.pod === baseM.pod && m.blNo === baseM.blNo)
       .map(m => m.id);
 
     setSelectedManifestIds(matchingManifestIds);
-    if (matchingManifestIds.length === (manifests || []).length) {
+    if (matchingManifestIds.length === availableManifests.length) {
        showMessage("All manifests matched the criteria and were selected.", "success");
     } else {
        showMessage(`Selected ${matchingManifestIds.length} manifests matching POL, POD and B/L No.`, "success");
@@ -97,12 +106,15 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
       return;
     }
 
-    const selectedManifestsData = (manifests || []).filter(m => selectedManifestIds.includes(m.id));
+    const selectedManifestsData = availableManifests.filter(m => selectedManifestIds.includes(m.id));
     
     // Aggregating lines
     let newLines = [];
     selectedManifestsData.forEach(m => {
       if (m.type === 'FCL') {
+        const totalCbm = parseFloat(m.totalCBM) || 0;
+        const cbmPerProduct = m.fclProducts && m.fclProducts.length > 0 ? (totalCbm / m.fclProducts.length) : 0;
+        
         (m.fclProducts || []).forEach((p, idx) => {
           newLines.push({
             manifestId: m.id,
@@ -113,6 +125,7 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
             qty: p.qty,
             hsCode: p.hsCode || '',
             weight: parseFloat(p.weight) || 0,
+            cbm: parseFloat(p.cbm) || cbmPerProduct,
             totalValue: 0,
             customer: m.fclCustomer || '',
             consignee: m.consignee || '',
@@ -132,6 +145,7 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
             qty: l.loadQty,
             hsCode: '',
             weight: (l.loadQty || 0) * (l.unitWeight || 0),
+            cbm: (l.loadQty || 0) * (l.unitCbm || 0),
             totalValue: 0,
             customer: l.customer || rcpt.customer || '',
             consignee: rcpt.consignee || '',
@@ -261,6 +275,7 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
            uom: l.uom || 'Unit',
            qty: 0,
            weight: 0,
+           cbm: 0,
            totalValue: 0,
            manifestId: 'MERGED', // we lose individual traceability to simplify
            receiptId: 'MERGED',
@@ -279,6 +294,7 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
       }
       groups[code].qty += (parseFloat(l.qty) || 0);
       groups[code].weight += (parseFloat(l.weight) || 0);
+      groups[code].cbm += (parseFloat(l.cbm) || 0);
       groups[code].totalValue += (parseFloat(l.totalValue) || 0);
     });
 
@@ -291,10 +307,11 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
        consignor: Array.from(new Set((g.consignor || '').split(', ').filter(Boolean))).join(', '),
        shipperDoNo: Array.from(new Set((g.shipperDoNo || '').split(', ').filter(Boolean))).join(', '),
        uom: g.uom,
-       qty: g.qty,
+       qty: Math.round(g.qty * 100) / 100,
        hsCode: g.hsCode,
-       weight: g.weight,
-       totalValue: g.totalValue,
+       weight: Math.round(g.weight * 100) / 100,
+       cbm: Math.round(g.cbm * 1000) / 1000,
+       totalValue: Math.round(g.totalValue * 100) / 100,
     }));
     
     setFormData({ ...formData, lines: mergedLines });
@@ -306,6 +323,8 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
   };
 
   if (selectingManifests) {
+    const unselectedCount = availableManifests.filter(m => !selectedManifestIds.includes(m.id)).length;
+
     return (
       <div className="max-w-5xl mx-auto space-y-6 flex flex-col h-full bg-slate-50/50 p-2 rounded-xl">
         <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
@@ -333,7 +352,7 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {(manifests || []).map(m => (
+              {availableManifests.map(m => (
                 <tr key={m.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => toggleManifestSelection(m.id)}>
                   <td className="p-4 text-center">
                     <input type="checkbox" checked={selectedManifestIds.includes(m.id)} readOnly className="w-4 h-4 text-indigo-600 rounded" />
@@ -342,10 +361,10 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
                   <td className="p-4 text-sm text-slate-600">{(m.vessel || m.voyage) ? `${m.vessel} ${m.voyage}` : '-'}</td>
                   <td className="p-4 text-sm text-slate-600">{m.pol} <span className="text-slate-400 mx-1">to</span> {m.pod}</td>
                   <td className="p-4 text-sm text-slate-600">Cnt: <span className="font-semibold">{m.containerNo || '-'}</span><br/>B/L: <span className="font-semibold">{m.blNo || '-'}</span></td>
-                  <td className="p-4 text-sm text-slate-600">{(m.lines || []).length} items</td>
+                  <td className="p-4 text-sm text-slate-600">{m.type === 'FCL' ? (m.fclProducts || []).length : (m.lines || []).length} items</td>
                 </tr>
               ))}
-              {(manifests || []).length === 0 && (
+              {availableManifests.length === 0 && (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-slate-500">No manifests available.</td>
                 </tr>
@@ -479,6 +498,7 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
                  <th className="p-3 font-semibold text-slate-700 text-right w-24">Qty</th>
                  <th className="p-3 font-semibold text-slate-700 text-center w-20">UoM</th>
                  <th className="p-3 font-semibold text-slate-700 text-right w-24">Wgt (kg)</th>
+                 <th className="p-3 font-semibold text-slate-700 text-right w-24">CBM</th>
                  <th className="p-3 font-semibold text-slate-700 text-right w-32">Total Val ({formData.currency})</th>
                </tr>
              </thead>
@@ -508,6 +528,9 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
                      <td className="p-2 align-top">
                        <input type="number" value={line.weight} onChange={e => updateLine(idx, 'weight', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded text-right" placeholder="0" />
                      </td>
+                     <td className="p-2 align-top">
+                       <input type="number" step="0.001" value={line.cbm !== undefined ? line.cbm : ''} onChange={e => updateLine(idx, 'cbm', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded text-right" placeholder="0.000" />
+                     </td>
                      <td className="p-2 align-top text-right font-medium text-slate-800 text-sm">
                        <input type="number" value={line.totalValue} onChange={e => updateLine(idx, 'totalValue', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded text-right" placeholder="0.00" step="0.01" />
                      </td>
@@ -521,7 +544,9 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
                  <td className="p-3 text-right font-bold text-slate-700">
                    {formData.lines.reduce((sum, line) => sum + (parseFloat(line.weight) || 0), 0).toFixed(2)}
                  </td>
-                 <td colSpan="1"></td>
+                 <td className="p-3 text-right font-bold text-slate-700">
+                   {formData.lines.reduce((sum, line) => sum + (parseFloat(line.cbm) || 0), 0).toFixed(3)}
+                 </td>
                  <td className="p-3 text-right font-bold text-blue-700 text-lg">
                    {formData.currency} {formData.lines.reduce((sum, line) => sum + (parseFloat(line.totalValue) || 0), 0).toFixed(2)}
                  </td>

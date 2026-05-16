@@ -134,7 +134,7 @@ const formatAddress = (addrObj) => {
 };
 
 const DashboardView = () => {
-  const { currentUser, checkAccess, getActiveInventory, manifests, receipts, returns, containerBookings, containerTypes, formatDate, pickups } = React.useContext(AppContext);
+  const { currentUser, checkAccess, getActiveInventory, manifests, receipts, returns, containerBookings, containerTypes, formatDate, pickups, companies } = React.useContext(AppContext);
   const [dashboardTimeframe, setDashboardTimeframe] = useState('Month');
 
   if (!checkAccess('dashboard', 'view')) return <div className="p-8 text-center text-slate-500">You do not have permission to view the Dashboard.</div>;
@@ -187,7 +187,6 @@ const DashboardView = () => {
   
   const calendarBookings = React.useMemo(() => {
     const dates = {};
-    const inventoryActive = getActiveInventory().filter(i => i.transactionType === 'LCL Consolidate');
     
     (containerBookings || []).forEach(b => {
       const dateKey = b.expectedSailingDate ? new Date(b.expectedSailingDate).toISOString().split('T')[0] : 'TBA';
@@ -195,17 +194,26 @@ const DashboardView = () => {
       
       const route = `${b.pol} to ${b.pod}`;
       
-      let routeVolume = 0;
-      inventoryActive.filter(i => i.pol === b.pol && i.pod === b.pod).forEach(i => {
-           routeVolume += ((i.currentQty || 0) * (i.unitCbm || 0));
+      let assignedCbm = 0;
+      let assignedWeight = 0;
+      
+      (manifests || []).filter(m => m.bookingId === b.id).forEach(m => {
+          assignedCbm += (m.totalCBM || 0);
+          assignedWeight += (m.totalWeight || 0);
       });
       
       let maxCbm = 0;
+      let maxWeight = 0;
       let hasLCL = false;
+      let hasFCL = false;
+
       b.containers.forEach(c => {
          if (c.usageType === 'LCL') {
              hasLCL = true;
-             maxCbm += (containerTypes?.find(t => t.type === c.containerTypeId)?.maxCbm || 0);
+             maxCbm += (parseFloat(containerTypes?.find(t => t.type === c.containerTypeId)?.maxCbm) || 0);
+             maxWeight += (parseFloat(containerTypes?.find(t => t.type === c.containerTypeId)?.maxWeight) || 0);
+         } else {
+             hasFCL = true;
          }
       });
       
@@ -213,7 +221,12 @@ const DashboardView = () => {
          booking: b,
          route,
          hasLCL,
-         occupiedPercent: maxCbm > 0 ? ((routeVolume / maxCbm) * 100).toFixed(1) : 0
+         hasFCL,
+         customer: (companies?.find(c => c.id === b.linerBrokerId)?.name || b.linerBrokerId),
+         assignedCbm,
+         assignedWeight,
+         occCbm: maxCbm > 0 ? ((assignedCbm / maxCbm) * 100).toFixed(1) : 0,
+         occWeight: maxWeight > 0 ? ((assignedWeight / maxWeight) * 100).toFixed(1) : 0
       });
     });
     
@@ -221,7 +234,7 @@ const DashboardView = () => {
     return Object.fromEntries(
       Object.entries(dates).sort(([a], [b]) => a === 'TBA' ? 1 : b === 'TBA' ? -1 : a.localeCompare(b))
     );
-  }, [containerBookings, containerTypes, getActiveInventory]);
+  }, [containerBookings, manifests, containerTypes, companies]);
 
   const pendingPickupsCount = (pickups || []).filter(p => p.status === 'Open' || !p.linkedSid).length;
 
@@ -347,7 +360,7 @@ const DashboardView = () => {
            <Calendar className="w-5 h-5 text-indigo-600" />
            <h3 className="text-lg font-semibold text-slate-800">Booking Schedule Calendar</h3>
         </div>
-        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="p-4 grid grid-cols-1 gap-6">
            {Object.keys(calendarBookings).length === 0 ? (
               <div className="col-span-full p-4 text-center text-slate-500 text-sm">No scheduled bookings found.</div>
            ) : (
@@ -356,25 +369,57 @@ const DashboardView = () => {
                    <div className="bg-slate-100 p-2 font-bold inset-0 border-b border-slate-200 text-slate-700 text-center uppercase tracking-widest text-xs">
                       {date === 'TBA' ? 'To Be Announced' : formatDate(date)}
                    </div>
-                   <div className="divide-y divide-slate-100">
-                      {(items as any[]).map((it: any, idx: number) => (
-                         <div key={idx} className="p-3 bg-white text-sm flex flex-col space-y-1 hover:bg-slate-50 transition">
-                            <div className="flex justify-between items-center">
-                               <span className="font-semibold text-blue-800">{it.route}</span>
-                               <span className="text-xs text-slate-400 font-mono">{it.booking.id}</span>
-                            </div>
-                            <div className="text-xs text-slate-600 flex justify-between items-center mt-1">
-                               <span>Containers: <strong className="text-slate-800">{it.booking.containers?.length || 0}</strong></span>
-                               {it.hasLCL && (
-                                   <div className="flex items-center space-x-1">
-                                      <span className="text-slate-500">Occ:</span>
-                                      <span className={`font-bold ${it.occupiedPercent > 90 ? 'text-red-600' : it.occupiedPercent > 60 ? 'text-orange-500' : 'text-emerald-600'}`}>{it.occupiedPercent}%</span>
+                   <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200">
+                       <div className="bg-white">
+                          <div className="bg-blue-50 py-1.5 px-3 border-b border-slate-200 text-blue-800 font-bold text-xs uppercase text-center">FCL Shipments</div>
+                          <div className="divide-y divide-slate-100">
+                             {(items as any[]).filter(it => it.hasFCL).length === 0 ? (
+                                <div className="p-4 text-center text-slate-400 text-xs italic">No FCL for this date</div>
+                             ) : (items as any[]).filter(it => it.hasFCL).map((it: any, idx: number) => (
+                                <div key={idx} className="p-3 bg-white text-sm flex flex-col space-y-1 hover:bg-slate-50 transition">
+                                   <div className="flex justify-between items-center">
+                                      <span className="font-semibold text-blue-800">{it.route}</span>
+                                      <span className="text-xs text-slate-400 font-mono">{it.booking.id}</span>
                                    </div>
-                               )}
-                               {!it.hasLCL && <span className="text-indigo-600 font-bold bg-indigo-50 px-1 rounded">FCL ONLY</span>}
-                            </div>
-                         </div>
-                      ))}
+                                   <div className="text-xs text-slate-600 flex justify-between items-center mt-1">
+                                      <span className="font-semibold text-slate-700 truncate max-w-[150px]">{it.customer}</span>
+                                      <span>Containers: <strong className="text-slate-800">{it.booking.containers?.length || 0}</strong></span>
+                                   </div>
+                                </div>
+                             ))}
+                          </div>
+                       </div>
+                       <div className="bg-white">
+                          <div className="bg-indigo-50 py-1.5 px-3 border-b border-slate-200 text-indigo-800 font-bold text-xs uppercase text-center">LCL Consolidations</div>
+                          <div className="divide-y divide-slate-100">
+                             {(items as any[]).filter(it => it.hasLCL).length === 0 ? (
+                                <div className="p-4 text-center text-slate-400 text-xs italic">No LCL for this date</div>
+                             ) : (items as any[]).filter(it => it.hasLCL).map((it: any, idx: number) => (
+                                <div key={idx} className="p-3 bg-white text-sm flex flex-col space-y-1 hover:bg-slate-50 transition">
+                                   <div className="flex justify-between items-center">
+                                      <span className="font-semibold text-indigo-800">{it.route}</span>
+                                      <span className="text-xs text-slate-400 font-mono">{it.booking.id}</span>
+                                   </div>
+                                   <div className="grid grid-cols-2 gap-2 mt-2">
+                                     <div className="bg-slate-50 p-2 border border-slate-100 rounded">
+                                        <p className="text-[10px] uppercase text-slate-400 font-bold">Assigned CBM</p>
+                                        <div className="flex items-end justify-between">
+                                          <p className="font-bold text-slate-700">{Number(it.assignedCbm).toFixed(2)}</p>
+                                          <span className={`text-xs font-bold leading-none ${Number(it.occCbm) > 90 ? 'text-red-600' : Number(it.occCbm) > 60 ? 'text-orange-500' : 'text-emerald-600'}`}>{it.occCbm}%</span>
+                                        </div>
+                                     </div>
+                                     <div className="bg-slate-50 p-2 border border-slate-100 rounded">
+                                        <p className="text-[10px] uppercase text-slate-400 font-bold">Assigned WGT</p>
+                                        <div className="flex items-end justify-between">
+                                          <p className="font-bold text-slate-700">{Number(it.assignedWeight).toFixed(0)}</p>
+                                          <span className={`text-xs font-bold leading-none ${Number(it.occWeight) > 90 ? 'text-red-600' : Number(it.occWeight) > 60 ? 'text-orange-500' : 'text-emerald-600'}`}>{it.occWeight}%</span>
+                                        </div>
+                                     </div>
+                                   </div>
+                                </div>
+                             ))}
+                          </div>
+                       </div>
                    </div>
                 </div>
               ))
@@ -386,7 +431,7 @@ const DashboardView = () => {
 };
 
 const TrackCargoView = () => {
-  const { receipts, manifests, returns, pickups, commercialInvoices, currentUser, globalTrackSearch, setGlobalTrackSearch, formatDate } = React.useContext(AppContext);
+  const { receipts, manifests, returns, pickups, commercialInvoices, companies, containerBookings, currentUser, globalTrackSearch, setGlobalTrackSearch, formatDate, setActiveTab, setEditCommercialInvoiceId, setEditReceiptId, setEditManifestId } = React.useContext(AppContext);
 
   const handleSearch = (e) => {
     setGlobalTrackSearch(e.target.value.toUpperCase());
@@ -408,6 +453,9 @@ const TrackCargoView = () => {
 
       const matchesSID = (r.id || '').toUpperCase().includes(term);
       const matchesDO = (r.shipperDoNo || '').toUpperCase().includes(term);
+      const matchesCustomer = (r.customer || '').toUpperCase().includes(term);
+      const matchesConsignee = (r.consignee || '').toUpperCase().includes(term);
+      const matchesConsignor = (r.consignor || '').toUpperCase().includes(term);
       const matchesContainer = mForReceipt.some(m => (m.cNo || '').toUpperCase().includes(term));
       const matchesHBL = mForReceipt.some(m => (m.hblNo || '').toUpperCase().includes(term) || (m.mBl || '').toUpperCase().includes(term));
       const matchesBooking = mForReceipt.some(m => (m.bk || '').toUpperCase().includes(term));
@@ -415,7 +463,7 @@ const TrackCargoView = () => {
       const matchesPickup = pForReceipt.some(p => (p.id || '').toUpperCase().includes(term)) || (r.puNo || '').toUpperCase().includes(term);
       const matchesReturnDO = retForReceipt.some(ret => (ret.doNo || '').toUpperCase().includes(term));
 
-      if (matchesSID || matchesDO || matchesContainer || matchesHBL || matchesPickup || matchesReturnDO || matchesBooking || matchesJob) {
+      if (matchesSID || matchesDO || matchesContainer || matchesHBL || matchesPickup || matchesReturnDO || matchesBooking || matchesJob || matchesCustomer || matchesConsignee || matchesConsignor) {
         results.push({ type: 'shipment', data: r });
       }
     });
@@ -423,29 +471,37 @@ const TrackCargoView = () => {
     // 2. Pickups
     (pickups || []).forEach(p => {
       if (uComp && !(p.customerName || '').toUpperCase().includes(uComp) && !(p.consigneeName || '').toUpperCase().includes(uComp) && !(p.consignorName || '').toUpperCase().includes(uComp)) return;
-      if ((p.id || '').toUpperCase().includes(term)) {
+      
+      const matchesId = (p.id || '').toUpperCase().includes(term);
+      const matchesName = (p.customerName || '').toUpperCase().includes(term) || (p.consigneeName || '').toUpperCase().includes(term) || (p.consignorName || '').toUpperCase().includes(term);
+
+      if (matchesId || matchesName) {
         results.push({ type: 'pickup', data: p });
       }
     });
 
     // 3. Returns
     (returns || []).forEach(ret => {
+      const rForRet = (receipts || []).find(r => r.id === ret.receiptId);
       if (uComp) {
-        const rForRet = (receipts || []).find(r => r.id === ret.receiptId);
         if (!rForRet || (!(rForRet.customer || '').toUpperCase().includes(uComp) && !(rForRet.consignee || '').toUpperCase().includes(uComp) && !(rForRet.consignor || '').toUpperCase().includes(uComp))) return;
       }
       const matchesId = (ret.id || '').toUpperCase().includes(term);
       const matchesDO = (ret.doNo || '').toUpperCase().includes(term);
+      const matchesName = rForRet && ((rForRet.customer || '').toUpperCase().includes(term) || (rForRet.consignee || '').toUpperCase().includes(term) || (rForRet.consignor || '').toUpperCase().includes(term));
       
-      if (matchesId || matchesDO) {
+      if (matchesId || matchesDO || matchesName) {
         results.push({ type: 'return', data: ret });
       }
     });
 
     // 4. Commercial Invoices
     (commercialInvoices || []).forEach(ci => {
-      if ((ci.id || '').toUpperCase().includes(term) || (ci.hblNo || '').toUpperCase().includes(term)) {
-         results.push({ type: 'commercial_invoice', data: ci });
+      const declCompName = (companies || []).find(c => c.id === ci.declCompanyId)?.name || '';
+      const cneCompName = (companies || []).find(c => c.id === ci.podConsigneeId)?.name || '';
+
+      if ((ci.id || '').toUpperCase().includes(term) || (ci.hblNo || '').toUpperCase().includes(term) || declCompName.toUpperCase().includes(term) || cneCompName.toUpperCase().includes(term)) {
+         results.push({ type: 'commercial_invoice', data: ci, declCompName, cneCompName });
       }
     });
 
@@ -495,7 +551,7 @@ const TrackCargoView = () => {
                 <div className="bg-blue-50 p-6 border-b border-blue-100 flex justify-between items-start">
                   <div>
                     <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-bold uppercase tracking-wider mb-2 inline-block">Shipment Record</span>
-                    <h3 className="text-2xl font-black text-blue-900">{r.id}</h3>
+                    <h3 className="text-2xl font-black text-blue-900 cursor-pointer hover:underline" onClick={() => { setActiveTab('new-receipt'); setEditReceiptId(r.id); setGlobalTrackSearch(''); }}>{r.id}</h3>
                     <p className="text-sm text-blue-700 mt-1 font-medium">Date Received: {formatDate(r.date)} | Shipper DO: <span className="font-mono">{r.shipperDoNo || '-'}</span></p>
                   </div>
                   <div className="text-right">
@@ -575,7 +631,7 @@ const TrackCargoView = () => {
                 <div className="bg-indigo-50 p-6 border-b border-indigo-100 flex justify-between items-start">
                   <div>
                     <span className="bg-indigo-600 text-white px-2 py-1 rounded text-xs font-bold uppercase tracking-wider mb-2 inline-block">Pickup Request</span>
-                    <h3 className="text-2xl font-black text-indigo-900">{p.id}</h3>
+                    <h3 className="text-2xl font-black text-indigo-900 cursor-pointer hover:underline" onClick={() => { setActiveTab('new-pickup'); setEditPickupId(p.id); setGlobalTrackSearch(''); }}>{p.id}</h3>
                     <p className="text-sm text-indigo-700 mt-1 font-medium">Date: {formatDate(p.date)}</p>
                   </div>
                   <div className="text-right">
@@ -601,7 +657,7 @@ const TrackCargoView = () => {
                 <div className="bg-orange-50 p-6 border-b border-orange-100 flex justify-between items-start">
                   <div>
                     <span className="bg-orange-600 text-white px-2 py-1 rounded text-xs font-bold uppercase tracking-wider mb-2 inline-block">Return Note</span>
-                    <h3 className="text-2xl font-black text-orange-900">{ret.id}</h3>
+                    <h3 className="text-2xl font-black text-orange-900 cursor-pointer hover:underline" onClick={() => { setActiveTab('new-return'); setEditReturnId(ret.id); setGlobalTrackSearch(''); }}>{ret.id}</h3>
                     <p className="text-sm text-orange-700 mt-1 font-medium">Date: {formatDate(ret.date)}</p>
                   </div>
                   <div className="text-right">
@@ -634,7 +690,7 @@ const TrackCargoView = () => {
                 <div className="bg-teal-50 p-6 border-b border-teal-100 flex justify-between items-start">
                   <div>
                     <span className="bg-teal-600 text-white px-2 py-1 rounded text-xs font-bold uppercase tracking-wider mb-2 inline-block">Manifest</span>
-                    <h3 className="text-2xl font-black text-teal-900">{m.id}</h3>
+                    <h3 className="text-2xl font-black text-teal-900 cursor-pointer hover:underline" onClick={() => { setActiveTab('new-manifest'); setEditManifestId(m.id); setGlobalTrackSearch(''); }}>{m.id}</h3>
                     <p className="text-sm text-teal-700 mt-1 font-medium">Date: {formatDate(m.date)}</p>
                   </div>
                   <div className="text-right">
@@ -664,7 +720,7 @@ const TrackCargoView = () => {
                 <div className="bg-purple-50 p-6 border-b border-purple-100 flex justify-between items-start">
                   <div>
                     <span className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-bold uppercase tracking-wider mb-2 inline-block">Commercial Invoice</span>
-                    <h3 className="text-2xl font-black text-purple-900">{ci.id}</h3>
+                    <h3 className="text-2xl font-black text-purple-900 cursor-pointer hover:underline" onClick={() => { setActiveTab('new-commercial-invoice'); setEditCommercialInvoiceId(ci.id); setGlobalTrackSearch(''); }}>{ci.id}</h3>
                     <p className="text-sm text-purple-700 mt-1 font-medium">Date: {ci.invoiceDate}</p>
                   </div>
                   <div className="text-right">
@@ -674,8 +730,23 @@ const TrackCargoView = () => {
                 </div>
                 <div className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><p className="text-xs uppercase font-bold text-slate-400">Decl Company ID</p><p className="font-semibold text-slate-800">{ci.declCompanyId || '-'}</p></div>
-                    <div><p className="text-xs uppercase font-bold text-slate-400">Consignee ID</p><p className="font-semibold text-slate-800">{ci.podConsigneeId || '-'}</p></div>
+                    <div><p className="text-xs uppercase font-bold text-slate-400">Declared Company</p><p className="font-semibold text-slate-800">{ci.declCompName || ci.declCompanyId || '-'}</p></div>
+                    <div><p className="text-xs uppercase font-bold text-slate-400">Consignee</p><p className="font-semibold text-slate-800">{ci.cneCompName || ci.podConsigneeId || '-'}</p></div>
+                  </div>
+                  {(ci.manifestIds && ci.manifestIds.length > 0) && (
+                    <div className="mt-6 pt-6 border-t border-slate-100">
+                      <h4 className="font-bold text-slate-800 mb-3 flex items-center"><Ship className="w-5 h-5 mr-2 text-purple-600"/> Linked Manifests</h4>
+                      <div className="space-y-2">
+                        {ci.manifestIds.map((mid, idx) => (
+                           <div key={idx} className="flex justify-between items-center bg-purple-50 p-3 rounded-lg border border-purple-100">
+                              <span className="font-bold text-purple-900 cursor-pointer hover:underline" onClick={() => { setActiveTab('manifests'); setEditManifestId(mid); }}>{mid}</span>
+                           </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="mt-6 flex justify-end">
+                     <button onClick={() => { setEditCommercialInvoiceId(ci.id); setActiveTab('new-commercial-invoice'); }} className="px-4 py-2 bg-purple-600 text-white rounded font-medium hover:bg-purple-700 transition">View CIPL Record</button>
                   </div>
                 </div>
               </div>
@@ -1698,8 +1769,13 @@ const SystemAdminModule = () => {
     manifestCountersMap, setManifestCountersMap, 
     breakbulkCounter, setBreakbulkCounter, 
     hblCountersMap, setHblCountersMap,
+    commercialInvoiceCountersMap, setCommercialInvoiceCountersMap,
+    pickupCounter, setPickupCounter,
+    bookingCounter, setBookingCounter,
+    haulierCounter, setHaulierCounter,
     receipts, returns, manifests, breakbulks,
-    showMessage, generateShipmentId, generateManifestNo
+    pickups, containerBookings, haulierBookings,
+    showMessage, generateShipmentId, generateManifestNo, generateCommercialInvoiceNo, generatePickupNo, generateBookingNo, generateHaulierBookingNo
   } = React.useContext(AppContext);
 
   if (currentUser?.roleId !== 'role-superadmin') {
@@ -1781,6 +1857,38 @@ const SystemAdminModule = () => {
                 <button onClick={() => handleReset('Breakbulk', setBreakbulkCounter, breakbulks || [])} className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded text-xs font-bold uppercase tracking-wider">Force Reset</button>
               </td>
             </tr>
+            <tr className="hover:bg-slate-50">
+              <td className="p-4 text-sm font-medium text-slate-800">Commercial Invoices (CIPL)</td>
+              <td className="p-4 text-sm font-mono text-pink-600">{generateCommercialInvoiceNo(new Date(), null, commercialInvoiceCountersMap)}</td>
+              <td className="p-4 text-sm text-slate-600">Dynamic</td>
+              <td className="p-4 text-center">
+                <button onClick={() => handleReset('Commercial Invoice', setCommercialInvoiceCountersMap, {})} className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded text-xs font-bold uppercase tracking-wider">Force Reset</button>
+              </td>
+            </tr>
+            <tr className="hover:bg-slate-50">
+              <td className="p-4 text-sm font-medium text-slate-800">Haulier Bookings (HB)</td>
+              <td className="p-4 text-sm font-mono text-cyan-600">{generateHaulierBookingNo(new Date(), 'PORT')}</td>
+              <td className="p-4 text-sm text-slate-600">{(haulierBookings || []).length}</td>
+              <td className="p-4 text-center">
+                <button onClick={() => handleReset('Haulier', setHaulierCounter, haulierBookings || [])} className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded text-xs font-bold uppercase tracking-wider">Force Reset</button>
+              </td>
+            </tr>
+            <tr className="hover:bg-slate-50">
+              <td className="p-4 text-sm font-medium text-slate-800">Container Bookings (CBN)</td>
+              <td className="p-4 text-sm font-mono text-emerald-600">{generateBookingNo(new Date(), 'LINER')}</td>
+              <td className="p-4 text-sm text-slate-600">{(containerBookings || []).length}</td>
+              <td className="p-4 text-center">
+                <button onClick={() => handleReset('Booking', setBookingCounter, containerBookings || [])} className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded text-xs font-bold uppercase tracking-wider">Force Reset</button>
+              </td>
+            </tr>
+            <tr className="hover:bg-slate-50">
+              <td className="p-4 text-sm font-medium text-slate-800">Pickups (PU)</td>
+              <td className="p-4 text-sm font-mono text-yellow-600">{generatePickupNo()}</td>
+              <td className="p-4 text-sm text-slate-600">{(pickups || []).length}</td>
+              <td className="p-4 text-center">
+                <button onClick={() => handleReset('Pickup', setPickupCounter, pickups || [])} className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded text-xs font-bold uppercase tracking-wider">Force Reset</button>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -1819,7 +1927,8 @@ const PickupForm = () => {
     } else {
       setFormData(prev => ({ ...prev, id: generatePickupNo() }));
     }
-  }, [editPickupId, pickups]); // Removed generatePickupNo to prevent infinite loop if function isn't memoized
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editPickupId]);
 
   const handleFormChange = (e) => {
     let value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -2337,7 +2446,7 @@ const ReceiptForm = () => {
   const [formData, setFormData] = useState({
     transactionType: 'LCL Consolidate', company: '', transportArrangement: 'Truck Arrangement by OmniMesh',
     customer: '', consignee: '', consignor: '', pol: '', pod: '', consigneeDeliveryAddress: '', shipperDoNo: '', isUrgent: false,
-    sendingType: 'SEND IN', puNo: ''
+    sendingType: 'SEND IN', puNo: '', grnRemarks: ''
   });
 
   const [lines, setLines] = useState([{ id: Date.now().toString(), product: '', uom: 'Pallet', qty: 1, l: '', w: '', h: '', weight: '', cbm: 0 }]);
@@ -2358,6 +2467,7 @@ const ReceiptForm = () => {
           pod: r.pod || '',
           consigneeDeliveryAddress: r.consigneeDeliveryAddress || '',
           shipperDoNo: r.shipperDoNo || '',
+          grnRemarks: r.grnRemarks || '',
           isUrgent: r.isUrgent || false,
           sendingType: r.sendingType || 'SEND IN',
           puNo: r.puNo || ''
@@ -2388,11 +2498,12 @@ const ReceiptForm = () => {
       setFormData({
         transactionType: 'LCL Consolidate', company: '', transportArrangement: 'Truck Arrangement by OmniMesh',
         customer: '', consignee: '', consignor: '', pol: '', pod: '', consigneeDeliveryAddress: '', shipperDoNo: '', isUrgent: false,
-        sendingType: 'SEND IN', puNo: ''
+        sendingType: 'SEND IN', puNo: '', grnRemarks: ''
       });
       setLines([{ id: Date.now().toString(), product: '', uom: 'Pallet', qty: 1, l: '', w: '', h: '', weight: '', cbm: 0 }]);
     }
-  }, [editReceiptId, receipts, convertPickupToReceiptData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editReceiptId, convertPickupToReceiptData]);
 
   const handleFormChange = (e) => {
     let value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -2460,7 +2571,8 @@ const ReceiptForm = () => {
       .catch(err => handleFirestoreError(err, OperationType.WRITE, `receipts/${updatedReceipt.id}`));
 
     if (editReceiptId) {
-      logActivity('UPDATE', 'Shipment Entry', updatedReceipt.id, 'Updated shipment details');
+      const oldR = receipts.find(r => r.id === updatedReceipt.id);
+      logActivity('UPDATE', 'Shipment Entry', updatedReceipt.id, 'Updated shipment details', oldR, updatedReceipt);
       pushNotificationToRelatedUsers(
          [updatedReceipt.customer, updatedReceipt.consignee, updatedReceipt.consignor],
          'Shipment Updated',
@@ -2644,6 +2756,11 @@ const ReceiptForm = () => {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Shipper DO No. <span className="text-red-500">*</span></label>
             <input type="text" name="shipperDoNo" value={formData.shipperDoNo} onChange={handleFormChange} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. SDO-12345" />
+          </div>
+
+          <div className="md:col-span-2 lg:col-span-3">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Goods Received Note Remarks</label>
+            <textarea name="grnRemarks" value={formData.grnRemarks} onChange={handleFormChange} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Received in good condition" rows={2} />
           </div>
 
           <div className="md:col-span-2 lg:col-span-3">
@@ -2986,8 +3103,8 @@ const ManifestForm = () => {
 
   const [route, setRoute] = useState({ 
     pol: '', pod: '', containerNo: '', sealNo: '', jobNo: '', bookingId: '', vessel: '', voyage: '', type: 'LCL', 
-    fclCustomer: '', consignee: '', consignor: '',
-    status: 'MANIFESTED', etd: '', eta: '', sailingDate: '', berthingDate: '' 
+    fclCustomer: '', consignee: '', consignor: '', totalCBM: '',
+    status: 'OPEN', etd: '', eta: '', sailingDate: '', berthingDate: '' 
   });
   const [manifestItems, setManifestItems] = useState([]);
   const [fclProducts, setFclProducts] = useState([]);
@@ -3002,7 +3119,8 @@ const ManifestForm = () => {
         setRoute({ 
           pol: m.pol, pod: m.pod, containerNo: m.containerNo || '', sealNo: m.sealNo || '', 
           jobNo: m.jobNo || '', bookingId: m.bookingId || '', vessel: m.vessel || '', voyage: m.voyage || '',
-          type: m.type || 'LCL', fclCustomer: m.fclCustomer || '', consignee: m.consignee || '', consignor: m.consignor || ''
+          type: m.type || 'LCL', fclCustomer: m.fclCustomer || '', consignee: m.consignee || '', consignor: m.consignor || '',
+          totalCBM: m.totalCBM || ''
         });
         setManifestItems(m.lines || []);
         setFclProducts(m.fclProducts || []);
@@ -3029,8 +3147,8 @@ const ManifestForm = () => {
     } else {
       setRoute({ 
         pol: '', pod: '', containerNo: '', sealNo: '', jobNo: '', bookingId: '', vessel: '', voyage: '', type: 'LCL', 
-        fclCustomer: '', consignee: '', consignor: '',
-        status: 'MANIFESTED', etd: '', eta: '', sailingDate: '', berthingDate: ''
+        fclCustomer: '', consignee: '', consignor: '', totalCBM: '',
+        status: 'OPEN', etd: '', eta: '', sailingDate: '', berthingDate: ''
       });
       setManifestItems([]);
       setFclProducts([]);
@@ -3050,7 +3168,8 @@ const ManifestForm = () => {
          { section: 'Ocean Freight', description: 'Telex Release Fee', cost: 0, costCurrency: 'MYR', selling: 0, sellingCurrency: 'MYR', isNew: false }
       ]);
     }
-  }, [editManifestId, manifests]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editManifestId]);
 
   useEffect(() => {
     if (!editManifestId && route.type === 'FCL' && route.pol && route.pod) {
@@ -3123,7 +3242,9 @@ const ManifestForm = () => {
           pod: b.pod || '',
           vessel: b.vessel || '',
           voyage: b.voyage || '',
-          containerNo: c.containerNo || route.containerNo || ''
+          containerNo: c.containerNo || route.containerNo || '',
+          etd: b.expectedSailingDate || '',
+          eta: b.eta || ''
         });
         return;
       }
@@ -3241,8 +3362,10 @@ const ManifestForm = () => {
         totalWeight = finalLines.reduce((sum, item) => sum + (parseInt(item.loadQty) * item.unitWeight), 0);
     } else {
         if (!route.fclCustomer) return showMessage("FCL Customer is required.");
+        if (route.totalCBM === undefined || route.totalCBM === '' || isNaN(parseFloat(route.totalCBM))) return showMessage("Total CBM is required for FCL.");
         if (fclProducts.length === 0) return showMessage("Please add at least one product.");
         totalWeight = fclProducts.reduce((sum, item) => sum + (parseFloat(item.weight) || 0), 0);
+        totalCBM = parseFloat(route.totalCBM) || 0;
     }
 
     let finalManifest;
@@ -3251,7 +3374,8 @@ const ManifestForm = () => {
       setDoc(doc(db, 'manifests', editManifestId), finalManifest)
         .catch(err => handleFirestoreError(err, OperationType.WRITE, `manifests/${editManifestId}`));
       
-      logActivity('UPDATE', 'Manifest Manager', editManifestId, 'Updated container manifest');
+      const oldM = manifests.find(m => m.id === editManifestId);
+      logActivity('UPDATE', 'Manifest Manager', editManifestId, 'Updated container manifest', oldM, finalManifest);
       const companiesToNotify = route.type === 'LCL' ? Array.from(new Set(finalLines.map((l: any) => l.customer))) : [route.fclCustomer];
       pushNotificationToRelatedUsers(companiesToNotify, 'Manifest Updated', `Manifest ${editManifestId} has been updated.`);
       setEditManifestId(null);
@@ -3364,6 +3488,14 @@ const ManifestForm = () => {
                   placeholder="Consignor name"
                 />
               </div>
+              <div className="lg:col-span-2 animate-in slide-in-from-top-2 duration-300">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Total CBM <span className="text-red-500">*</span></label>
+                <input 
+                  type="number" step="0.001" name="totalCBM" value={route.totalCBM} onChange={handleRouteChange} 
+                  className="w-full p-2 border border-indigo-300 rounded-md bg-indigo-50/30" 
+                  placeholder="e.g. 28.5"
+                />
+              </div>
             </>
           )}
           <div className="lg:col-span-6">
@@ -3424,8 +3556,9 @@ const ManifestForm = () => {
           </div>
           <div className="lg:col-span-1">
             <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-            <select name="status" value={route.status || 'MANIFESTED'} onChange={handleRouteChange} className="w-full p-2 border border-slate-300 rounded-md font-bold uppercase text-xs">
-              <option value="MANIFESTED">Manifested (At Sea)</option>
+            <select name="status" value={route.status || 'OPEN'} onChange={handleRouteChange} className="w-full p-2 border border-slate-300 rounded-md font-bold uppercase text-xs">
+              <option value="OPEN">Open</option>
+              <option value="MANIFESTED">Manifested</option>
               <option value="SAILING">Sailing</option>
               <option value="VESSEL_DELAYED">Vessel Delayed</option>
               <option value="BERTHED">Vessel Berthed</option>
@@ -3780,8 +3913,27 @@ const DeConsolidationModule = () => {
                     <p className="text-xs text-slate-500 mt-1">Arrival: {formatDate(m.date)}</p>
                   </td>
                   <td className="p-4">
-                     <select className="p-1.5 border rounded text-xs font-bold uppercase bg-slate-50 text-slate-700 border-slate-300">
-                        <option value="MANIFESTED">Manifested (At Sea)</option>
+                     <select 
+                       value={m.status || 'OPEN'}
+                       onChange={(e) => {
+                         const newStatus = e.target.value;
+                         setDoc(doc(db, 'manifests', m.id), { ...m, status: newStatus })
+                           .then(() => logActivity('UPDATE', 'Manifest Manager', m.id, `Status updated to ${newStatus}`))
+                           .catch(err => handleFirestoreError(err, OperationType.WRITE, `manifests/${m.id}`));
+                       }}
+                       className="p-1.5 border rounded text-xs font-bold uppercase bg-slate-50 text-slate-700 border-slate-300"
+                     >
+                        <option value="OPEN">Open</option>
+                        <option value="MANIFESTED">Manifested</option>
+                        <option value="SAILING">Sailing</option>
+                        <option value="VESSEL_DELAYED">Vessel Delayed</option>
+                        <option value="BERTHED">Vessel Berthed</option>
+                        <option value="GATED_OUT">Gated Out to Port</option>
+                        <option value="DISCHARGED">Discharged</option>
+                        <option value="GATE_PASS_ISSUED">Gate Pass Issued</option>
+                        <option value="CLEARED_CUSTOMS">Cleared Customs</option>
+                        <option value="GATED_IN">Gated in to Warehouse</option>
+                        <option value="UNSTUFFED">Unstuffed</option>
                         <option value="STOCK_IN">Stock-In Received</option>
                         <option value="PENDING_DISTRIBUTION">Pending Distribution</option>
                         <option value="DELIVERED">Delivered</option>
@@ -3910,7 +4062,7 @@ const ManifestList = () => {
                         m.status === 'BERTHED' ? 'bg-sky-100 text-sky-700' :
                         'bg-blue-100 text-blue-700'
                      }`}>
-                        {(m.status || 'MANIFESTED').replace(/_/g, ' ')}
+                        {(m.status || 'OPEN').replace(/_/g, ' ')}
                      </span>
                      <div className="mt-2 text-[10px] text-slate-500 leading-tight">
                         {['POL', 'POD'].map(seg => {
@@ -4022,7 +4174,8 @@ const HaulierBookingForm = () => {
       });
       setSelectingCbn(true);
     }
-  }, [editHaulierBookingId, haulierBookings]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editHaulierBookingId]);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
   
@@ -4143,7 +4296,7 @@ const HaulierBookingForm = () => {
               {availableContainers.map(item => (
                 <tr key={`${item.id}-${item.container.id}`} className="hover:bg-slate-50">
                   <td className="p-4">
-                    <p className="font-semibold text-indigo-700">{item.container.containerNo || 'Unknown Container'}</p>
+                    <p className="font-semibold text-indigo-700">{item.container.containerNo || 'Unknown Container'} <span className={`px-2 py-0.5 rounded text-xs ml-2 ${item.container.usageType === 'FCL' ? 'bg-indigo-100 text-indigo-800' : 'bg-teal-100 text-teal-800'}`}>{item.container.usageType || 'LCL'}</span></p>
                     <p className="text-xs text-slate-500 font-mono mt-1">CBN: {item.id}</p>
                     <p className="text-xs text-slate-500">Job: {item.container.jobNo || '-'}</p>
                     <p className="text-xs text-slate-500">Type: {item.container.containerTypeId || '-'}</p>
@@ -4382,9 +4535,26 @@ const ContainerBookingForm = () => {
 
   const [formData, setFormData] = useState({
     bookingNo: '', blNo: '', pol: '', pod: '', vessel: '', voyage: '',
-    expectedSailingDate: '', containerClosingDate: '', ladenHaulierDate: '', emptyLadenDate: '', linerBrokerId: '',
+    expectedSailingDate: '', eta: '', containerClosingDate: '', ladenHaulierDate: '', emptyLadenDate: '', lastStuffingDate: '', linerBrokerId: '',
     containers: [{ id: Date.now().toString(), containerNo: '', containerTypeId: '', jobNo: '', usageType: 'LCL' }]
   });
+
+  const prevLadenRef = React.useRef(formData.ladenHaulierDate);
+  useEffect(() => {
+    if (formData.ladenHaulierDate && formData.ladenHaulierDate !== prevLadenRef.current) {
+      prevLadenRef.current = formData.ladenHaulierDate;
+      const ladenDate = new Date(formData.ladenHaulierDate);
+      if (!isNaN(ladenDate.getTime())) {
+        const stuffingDate = new Date(ladenDate);
+        stuffingDate.setDate(ladenDate.getDate() - 1);
+        const yyyy = stuffingDate.getFullYear();
+        const mm = String(stuffingDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(stuffingDate.getDate()).padStart(2, '0');
+        const formatted = `${yyyy}-${mm}-${dd}`;
+        setFormData(prev => ({ ...prev, lastStuffingDate: formatted }));
+      }
+    }
+  }, [formData.ladenHaulierDate]);
 
   useEffect(() => {
     if (editBookingId) {
@@ -4398,30 +4568,45 @@ const ContainerBookingForm = () => {
     } else {
       setFormData({
         bookingNo: '', blNo: '', pol: '', pod: '', vessel: '', voyage: '',
-        expectedSailingDate: '', containerClosingDate: '', ladenHaulierDate: '', emptyLadenDate: '', linerBrokerId: '',
+        expectedSailingDate: '', eta: '', containerClosingDate: '', ladenHaulierDate: '', emptyLadenDate: '', lastStuffingDate: '', linerBrokerId: '',
         containers: [{ id: Date.now().toString(), containerNo: '', containerTypeId: '', jobNo: '', usageType: 'LCL' }]
       });
     }
-  }, [editBookingId, containerBookings, containerTypes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editBookingId]);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value.toUpperCase() });
   const handleDateChange = (e) => {
     const val = e.target.value;
     const updates: any = { [e.target.name]: val };
     
-    // Empty laden date is 3 days before laden haulier, container closing is 1 day before
-    if (e.target.name === 'ladenHaulierDate' && val) {
-      const lhDate = new Date(val);
-      if (!isNaN(lhDate.getTime())) {
-         const elDate = new Date(lhDate.getTime() - 3 * 24 * 60 * 60 * 1000);
-         updates['emptyLadenDate'] = elDate.toISOString().split('T')[0];
-         const ccDate = new Date(lhDate.getTime() - 1 * 24 * 60 * 60 * 1000);
+    if (e.target.name === 'expectedSailingDate' && val) {
+      updates['eta'] = val; // default ETA same as ETD initially
+      const esDate = new Date(val);
+      if (!isNaN(esDate.getTime())) {
+         const ccDate = new Date(esDate.getTime() - 1 * 24 * 60 * 60 * 1000);
          updates['containerClosingDate'] = ccDate.toISOString().split('T')[0];
+         
+         const llDate = new Date(ccDate.getTime() - 1 * 24 * 60 * 60 * 1000);
+         updates['ladenHaulierDate'] = llDate.toISOString().split('T')[0];
+         
+         const elDate = new Date(llDate.getTime() - 3 * 24 * 60 * 60 * 1000);
+         updates['emptyLadenDate'] = elDate.toISOString().split('T')[0];
+
+         const lsDate = new Date(llDate.getTime() - 1 * 24 * 60 * 60 * 1000);
+         updates['lastStuffingDate'] = lsDate.toISOString().split('T')[0];
+      }
+    } else if (e.target.name === 'ladenHaulierDate' && val) {
+      const llDate = new Date(val);
+      if (!isNaN(llDate.getTime())) {
+         const lsDate = new Date(llDate.getTime() - 1 * 24 * 60 * 60 * 1000);
+         updates['lastStuffingDate'] = lsDate.toISOString().split('T')[0];
       }
     }
     
     setFormData({ ...formData, ...updates });
   };
+
 
   const handleContainerChange = (idx, field, value) => {
     const newContainers: any = [...formData.containers];
@@ -4441,10 +4626,11 @@ const ContainerBookingForm = () => {
       const closeDate = new Date(formData.containerClosingDate).getTime();
       if (formData.ladenHaulierDate) {
         const ladenDate = new Date(formData.ladenHaulierDate).getTime();
-        if (closeDate > ladenDate) return showMessage("Container closing date cannot be later than container laden haulier date.");
+        if (closeDate < ladenDate) return showMessage("Container closing date cannot be earlier than container laden haulier date.");
       }
       if (formData.emptyLadenDate) {
         const emptyDate = new Date(formData.emptyLadenDate).getTime();
+        // Normally empty laden date is before laden haulier date. So close date > empty date is expected. 
         if (closeDate < emptyDate) return showMessage("Container closing date cannot be earlier than empty laden date.");
       }
     }
@@ -4467,7 +4653,8 @@ const ContainerBookingForm = () => {
       .catch(err => handleFirestoreError(err, OperationType.WRITE, `containerBookings/${id}`));
 
     if (editBookingId) {
-      logActivity('UPDATE', 'Container Bookings', id, 'Updated container booking');
+      const oldB = containerBookings.find(b => b.id === id);
+      logActivity('UPDATE', 'Container Bookings', id, 'Updated container booking', oldB, payload);
     } else {
       logActivity('CREATE', 'Container Bookings', id, 'Created new container booking');
     }
@@ -4501,10 +4688,12 @@ const ContainerBookingForm = () => {
         <div><label className="block text-sm font-medium text-slate-700 mb-1">Vessel</label><input type="text" name="vessel" value={formData.vessel || ''} onChange={handleChange} placeholder="e.g. EVER GIVEN" className="w-full p-2 border border-slate-300 rounded-md" /></div>
         <div><label className="block text-sm font-medium text-slate-700 mb-1">Voyage</label><input type="text" name="voyage" value={formData.voyage || ''} onChange={handleChange} placeholder="e.g. 0124A" className="w-full p-2 border border-slate-300 rounded-md" /></div>
 
-        <div><label className="block text-sm font-medium text-slate-700 mb-1">Expected Sailing / ETA Date</label><input type="date" name="expectedSailingDate" value={formData.expectedSailingDate} onChange={handleDateChange} className="w-full p-2 border border-slate-300 rounded-md" /></div>
+        <div><label className="block text-sm font-medium text-slate-700 mb-1">Expected Sailing Date / ETD</label><input type="date" name="expectedSailingDate" value={formData.expectedSailingDate} onChange={handleDateChange} className="w-full p-2 border border-slate-300 rounded-md" /></div>
+        <div><label className="block text-sm font-medium text-slate-700 mb-1">ETA</label><input type="date" name="eta" value={formData.eta || ''} onChange={handleDateChange} className="w-full p-2 border border-slate-300 rounded-md" /></div>
         <div><label className="block text-sm font-medium text-slate-700 mb-1">Container Closing Date</label><input type="date" name="containerClosingDate" value={formData.containerClosingDate} onChange={handleDateChange} className="w-full p-2 border border-slate-300 rounded-md" /></div>
         <div><label className="block text-sm font-medium text-slate-700 mb-1">Laden Leg Date (Export to Port / Import to WH)</label><input type="date" name="ladenHaulierDate" value={formData.ladenHaulierDate} onChange={handleDateChange} className="w-full p-2 border border-slate-300 rounded-md" /></div>
         <div><label className="block text-sm font-medium text-slate-700 mb-1">Empty Leg Date (Export from Depot / Import to Depot)</label><input type="date" name="emptyLadenDate" value={formData.emptyLadenDate} onChange={handleDateChange} className="w-full p-2 border border-slate-300 rounded-md" /></div>
+        <div><label className="block text-sm font-medium text-slate-700 mb-1">Last Stuffing Date</label><input type="date" name="lastStuffingDate" value={formData.lastStuffingDate || ''} onChange={handleDateChange} className="w-full p-2 border border-slate-300 rounded-md" /></div>
       </div>
       
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
@@ -4559,7 +4748,7 @@ const ContainerBookingForm = () => {
 
 const ContainerBookingList = () => {
   const { 
-    containerBookings, containerTypes, setEditBookingId, setActiveTab, manifests, companies
+    containerBookings, containerTypes, setEditBookingId, setActiveTab, manifests, companies, setPrintingBookingForm
   } = React.useContext(AppContext);
 
   return (
@@ -4665,7 +4854,7 @@ const ContainerBookingList = () => {
                   </td>
                   <td className="p-4 text-center space-y-2">
                     <button onClick={() => { setEditBookingId(b.id); setActiveTab('new-booking'); }} className="px-3 py-1 bg-sky-50 text-sky-700 hover:bg-sky-100 rounded font-medium text-xs w-full block">Edit</button>
-                    <button onClick={() => { window.printBookingForm(b); }} className="px-3 py-1 bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-300 rounded font-medium text-xs w-full block">Print Form</button>
+                    <button onClick={() => { setPrintingBookingForm(b); }} className="px-3 py-1 bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-300 rounded font-medium text-xs w-full block">Print Form</button>
                   </td>
                 </tr>
               );
@@ -4741,7 +4930,8 @@ const ReturnNoteForm = () => {
       setReturnLines([]);
       setReceiptSearch('');
     }
-  }, [editReturnId, returns, receipts, manifests]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editReturnId]);
 
   const filteredReceipts = useMemo(() => {
     if (editReturnId) return []; // Hide search while editing
@@ -5238,7 +5428,7 @@ const InventoryView = () => {
 };
 
 const PrintLabelsOverlay = () => {
-  const { printingReceipt, setPrintingReceipt, handlePrintRequest } = React.useContext(AppContext);
+  const { printingReceipt, setPrintingReceipt, handlePrintRequest, handleGeneratePDF } = React.useContext(AppContext);
   if (!printingReceipt) return null;
   const packagesToPrint = [];
   let currentPkgNum = 1;
@@ -5264,22 +5454,15 @@ const PrintLabelsOverlay = () => {
   };
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-[60] flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
-      <style>{`
-        @media print { 
-          html, body, #root { height: auto !important; overflow: visible !important; background: white !important; }
-          body * { visibility: hidden; } 
-          .no-print { display: none !important; } 
-          .print-safe-modal { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; background: transparent !important; padding: 0 !important; } 
-          #print-area, #print-area * { visibility: visible; } 
-          #print-area { position: absolute; left: 0; top: 0; width: 100%; display: flex; flex-direction: column; align-items: flex-start; } 
-          .a6-label { width: 105mm !important; height: 148mm !important; margin: 0 !important; border: none !important; box-shadow: none !important; page-break-after: always; box-sizing: border-box; } 
-          @page { size: A6 portrait; margin: 5mm; } 
-        }
-      `}</style>
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-50 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+      
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
         <div><h3 className="font-bold text-lg text-slate-800">Print Thermal Labels (A6)</h3></div>
-        <div className="flex space-x-3"><button onClick={() => setPrintingReceipt(null)} className="px-4 py-2 border rounded">Cancel</button><button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded">Print</button></div>
+        <div className="flex space-x-3">
+          <button onClick={() => setPrintingReceipt(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Cancel</button>
+          <button onClick={() => handleGeneratePDF('print-area', `${printingReceipt.id}-Labels.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">Print</button>
+        </div>
       </div>
       <div id="print-area" className="flex flex-col items-center space-y-8 w-full">
         {packagesToPrint.map((pkg, idx) => {
@@ -5326,42 +5509,50 @@ const PrintLabelsOverlay = () => {
 };
 
 const PrintA4Overlay = () => {
-  const { printingA4Receipt, setPrintingA4Receipt, handlePrintRequest } = React.useContext(AppContext);
+  const { printingA4Receipt, setPrintingA4Receipt, handlePrintRequest, handleGeneratePDF, currentUser } = React.useContext(AppContext);
   if (!printingA4Receipt) return null;
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-[60] flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
-      <style>{`
-        @media print { 
-          html, body, #root { height: auto !important; overflow: visible !important; background: white !important; }
-          body * { visibility: hidden; } 
-          .no-print { display: none !important; } 
-          .print-safe-modal { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; background: transparent !important; padding: 0 !important; } 
-          #a4-print-area, #a4-print-area * { visibility: visible; } 
-          #a4-print-area { position: absolute; left: 0; top: 0; width: 100%; display: block; margin: 0; padding: 0; } 
-          .a4-page { width: 100% !important; height: auto !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; border: none !important; box-shadow: none !important; background: white; page-break-after: always; box-sizing: border-box; } 
-          @page { size: A4 portrait; margin: 15mm; } 
-        }
-      `}</style>
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-50 no-print">
-        <div><h3 className="font-bold text-lg text-slate-800">Print Shipment</h3></div>
-        <div className="flex space-x-3"><button onClick={() => setPrintingA4Receipt(null)} className="px-4 py-2 border rounded">Close</button><button onClick={handlePrintRequest} className="px-4 py-2 bg-purple-600 text-white rounded">Print</button></div>
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+      
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
+        <div><h3 className="font-bold text-lg text-slate-800">Print Goods Received Note</h3></div>
+        <div className="flex space-x-3">
+           <button onClick={() => setPrintingA4Receipt(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
+           <button onClick={() => handleGeneratePDF('a4-print-area', `${printingA4Receipt.id}-GRN.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+           <button onClick={handlePrintRequest} className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors">Print</button>
+        </div>
       </div>
       <div id="a4-print-area" className="flex flex-col items-center w-full pb-20">
         <div className="a4-page bg-white shadow-2xl border border-slate-200" style={{ width: '210mm', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box' }}>
           <div className="border-b-2 border-slate-800 pb-6 mb-6 flex justify-between items-end">
-            <div><h1 className="text-4xl font-black">{printingA4Receipt.company}</h1><p className="text-sm font-bold uppercase mt-1">Warehouse Shipment</p></div>
-            <div className="text-right"><p className="text-sm uppercase font-semibold">Shipment ID</p><p className="text-2xl font-bold font-mono">{printingA4Receipt.id}</p></div>
+            <div><h1 className="text-4xl font-black">{printingA4Receipt.company}</h1><p className="text-sm font-bold uppercase mt-1">Goods Received Note</p></div>
+            <div className="text-right"><p className="text-sm uppercase font-semibold">GRN ID</p><p className="text-2xl font-bold font-mono">{printingA4Receipt.id}</p></div>
           </div>
           <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
             <div>
               <p className="text-xs uppercase font-bold border-b pb-1 mb-2">Customer Info</p><p className="font-bold text-lg">{printingA4Receipt.customer}</p>
-              <div className="mt-4"><p className="text-xs uppercase font-bold">Consignee</p><p className="font-semibold">{printingA4Receipt.consignee}</p></div>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                 <div><p className="text-xs uppercase font-bold">Consignor</p><p className="font-semibold">{printingA4Receipt.consignor || 'N/A'}</p></div>
+                 <div><p className="text-xs uppercase font-bold">Consignee</p><p className="font-semibold">{printingA4Receipt.consignee || 'N/A'}</p></div>
+              </div>
             </div>
             <div>
               <p className="text-xs uppercase font-bold border-b pb-1 mb-2">Details</p>
-              <div className="space-y-2"><div className="flex justify-between"><span>Type:</span> <span className="font-semibold">{printingA4Receipt.transactionType}</span></div></div>
+              <div className="space-y-2">
+                <div className="flex justify-between"><span>Generated Date:</span> <span className="font-semibold">{new Date().toLocaleDateString('en-GB')}</span></div>
+                <div className="flex justify-between"><span>Type:</span> <span className="font-semibold">{printingA4Receipt.transactionType}</span></div>
+                <div className="flex justify-between"><span>Routing:</span> <span className="font-semibold">{printingA4Receipt.pol || '-'} to {printingA4Receipt.pod || '-'}</span></div>
+                <div className="flex justify-between"><span>MBL/Booking No:</span> <span className="font-semibold">{printingA4Receipt.blNo || '-'} / {printingA4Receipt.bookingNo || '-'}</span></div>
+                <div className="flex justify-between"><span>Shipper DO Ref:</span> <span className="font-semibold">{printingA4Receipt.shipperDoNo || '-'}</span></div>
+              </div>
             </div>
           </div>
+          {printingA4Receipt.grnRemarks && (
+            <div className="mb-6 p-4 bg-slate-50 border border-slate-200">
+              <p className="text-xs uppercase font-bold mb-1">Remarks</p>
+              <p className="text-sm whitespace-pre-wrap">{printingA4Receipt.grnRemarks}</p>
+            </div>
+          )}
           <div className="mb-8">
             <table className="w-full text-left text-sm border-collapse">
               <thead><tr className="bg-slate-100"><th className="p-2 border">Description</th><th className="p-2 border text-center">Qty</th><th className="p-2 border text-right">Unit Wgt(kg)</th><th className="p-2 border text-right">Total Wgt(kg)</th><th className="p-2 border text-right">CBM</th></tr></thead>
@@ -5372,6 +5563,29 @@ const PrintA4Overlay = () => {
               </tbody>
             </table>
           </div>
+          
+          <div className="mt-12 text-sm">
+            <div className="border border-slate-300 p-4 mb-8 text-center bg-slate-50 w-64 mx-auto rotate-1">
+              <p className="text-red-600 font-bold uppercase border-2 border-red-600 p-2 transform rotate-1">Quantity Check without Content Inspection</p>
+            </div>
+            
+            <p className="text-xs text-slate-500 text-center mb-16 italic">
+              This is a computer-generated document, no signature is required. <br />
+              Generated by {currentUser?.username || 'System'}
+            </p>
+
+            <div className="flex justify-between border-t border-slate-300 pt-8 mt-16 px-8">
+               <div className="w-1/3">
+                 <p className="font-bold underline mb-4">Acknowledgement</p>
+                 <p className="mb-2">Name: ______________________</p>
+                 <p className="mb-2">NRIC: ______________________</p>
+                 <p className="mb-2">Date:   ______________________</p>
+               </div>
+               <div className="w-1/3 text-right">
+               </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -5379,27 +5593,20 @@ const PrintA4Overlay = () => {
 };
 
 const PrintPackingListOverlay = () => {
-  const { printingPackingList, setPrintingPackingList, handlePrintRequest, companies, pickups, receipts } = React.useContext(AppContext);
+  const { printingPackingList, setPrintingPackingList, handlePrintRequest, handleGeneratePDF, companies, pickups, receipts } = React.useContext(AppContext);
   if (!printingPackingList) return null;
   const m = printingPackingList;
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-[60] flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
-      <style>{`
-        @media print { 
-          html, body, #root { height: auto !important; overflow: visible !important; background: white !important; }
-          body * { visibility: hidden; } 
-          .no-print { display: none !important; } 
-          .print-safe-modal { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; background: transparent !important; padding: 0 !important; } 
-          #a4-print-area, #a4-print-area * { visibility: visible; } 
-          #a4-print-area { position: absolute; left: 0; top: 0; width: 100%; display: block; margin: 0; padding: 0; } 
-          .a4-page { width: 100% !important; height: auto !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; border: none !important; box-shadow: none !important; background: white; page-break-after: always; box-sizing: border-box; } 
-          @page { size: A4 portrait; margin: 15mm; } 
-        }
-      `}</style>
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-50 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+      
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
         <div><h3 className="font-bold text-lg text-slate-800">Print Packing List</h3></div>
-        <div className="flex space-x-3"><button onClick={() => setPrintingPackingList(null)} className="px-4 py-2 border rounded">Close</button><button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded">Print</button></div>
+        <div className="flex space-x-3">
+          <button onClick={() => setPrintingPackingList(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-PL.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">Print</button>
+        </div>
       </div>
       <div id="a4-print-area" className="flex flex-col items-center w-full pb-20">
         <div className="a4-page bg-white shadow-2xl border border-slate-200" style={{ width: '210mm', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box' }}>
@@ -5501,7 +5708,7 @@ const PrintPackingListOverlay = () => {
 };
 
 const PrintDeliveryOrdersOverlay = () => {
-  const { printingDeliveryOrders, setPrintingDeliveryOrders, handlePrintRequest, receipts, companies } = React.useContext(AppContext);
+  const { printingDeliveryOrders, setPrintingDeliveryOrders, handlePrintRequest, handleGeneratePDF, receipts, companies } = React.useContext(AppContext);
   if (!printingDeliveryOrders) return null;
   const m = printingDeliveryOrders;
 
@@ -5581,22 +5788,15 @@ const PrintDeliveryOrdersOverlay = () => {
   const groups = Object.values(doGroups);
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-[60] flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
-      <style>{`
-        @media print { 
-          html, body, #root { height: auto !important; overflow: visible !important; background: white !important; }
-          body * { visibility: hidden; } 
-          .no-print { display: none !important; } 
-          .print-safe-modal { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; background: transparent !important; padding: 0 !important; } 
-          #a4-print-area, #a4-print-area * { visibility: visible; } 
-          #a4-print-area { position: absolute; left: 0; top: 0; width: 100%; display: block; margin: 0; padding: 0; } 
-          .a4-page { width: 100% !important; height: auto !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; border: none !important; box-shadow: none !important; background: white; page-break-after: always; box-sizing: border-box; } 
-          @page { size: A4 portrait; margin: 15mm; } 
-        }
-      `}</style>
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-50 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+      
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
         <div><h3 className="font-bold text-lg text-slate-800">Print Delivery Orders</h3><p className="text-sm text-slate-500">Generated {groups.length} distinct D/O pages based on destinations.</p></div>
-        <div className="flex space-x-3"><button onClick={() => setPrintingDeliveryOrders(null)} className="px-4 py-2 border rounded">Close</button><button onClick={handlePrintRequest} className="px-4 py-2 bg-teal-600 text-white rounded">Print All D/Os</button></div>
+        <div className="flex space-x-3">
+          <button onClick={() => setPrintingDeliveryOrders(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-DO.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={handlePrintRequest} className="px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors">Print All D/Os</button>
+        </div>
       </div>
       <div id="a4-print-area" className="flex flex-col items-center w-full pb-20 space-y-8">
         {groups.map((group, gIdx) => {
@@ -5685,27 +5885,20 @@ const PrintDeliveryOrdersOverlay = () => {
 };
 
 const PrintPickupNoteOverlay = () => {
-  const { printingPickupNote, setPrintingPickupNote, handlePrintRequest, companies, currentUser, formatDate } = React.useContext(AppContext);
+  const { printingPickupNote, setPrintingPickupNote, handlePrintRequest, handleGeneratePDF, companies, currentUser, formatDate } = React.useContext(AppContext);
   if (!printingPickupNote) return null;
   const pickupsToPrint = Array.isArray(printingPickupNote) ? printingPickupNote : [printingPickupNote];
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-[60] flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
-      <style>{`
-        @media print { 
-          html, body, #root { height: auto !important; overflow: visible !important; background: white !important; }
-          body * { visibility: hidden; } 
-          .no-print { display: none !important; } 
-          .print-safe-modal { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; background: transparent !important; padding: 0 !important; } 
-          #a4-print-area, #a4-print-area * { visibility: visible; } 
-          #a4-print-area { position: absolute; left: 0; top: 0; width: 100%; display: block; margin: 0; padding: 0; } 
-          .a4-page { width: 100% !important; height: auto !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; border: none !important; box-shadow: none !important; background: white; page-break-after: always; box-sizing: border-box; } 
-          @page { size: A4 portrait; margin: 15mm; } 
-        }
-      `}</style>
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-50 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+      
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
         <div><h3 className="font-bold text-lg text-slate-800">Print Pickup Note</h3></div>
-        <div className="flex space-x-3"><button onClick={() => setPrintingPickupNote(null)} className="px-4 py-2 border rounded">Close</button><button onClick={handlePrintRequest} className="px-4 py-2 bg-indigo-600 text-white rounded">Print Pickup Note</button></div>
+        <div className="flex space-x-3">
+          <button onClick={() => setPrintingPickupNote(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `Pickup-Note.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={handlePrintRequest} className="px-4 py-2 bg-indigo-800 text-white rounded hover:bg-indigo-900 transition-colors">Print Pickup Note</button>
+        </div>
       </div>
       <div id="a4-print-area" className="flex flex-col items-center w-full pb-20 space-y-8">
         {pickupsToPrint.map((p, pIndex) => {
@@ -5808,7 +6001,7 @@ const PrintPickupNoteOverlay = () => {
 };
 
 const PrintBookingFormOverlay = () => {
-  const { printingBookingForm, setPrintingBookingForm, handlePrintRequest, formatDate } = React.useContext(AppContext);
+  const { printingBookingForm, setPrintingBookingForm, handlePrintRequest, handleGeneratePDF, formatDate } = React.useContext(AppContext);
   if (!printingBookingForm) return null;
   const b = printingBookingForm;
   
@@ -5819,22 +6012,15 @@ const PrintBookingFormOverlay = () => {
   });
   
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-[60] flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
-      <style>{`
-        @media print { 
-          html, body, #root { height: auto !important; overflow: visible !important; background: white !important; }
-          body * { visibility: hidden; } 
-          .no-print { display: none !important; } 
-          .print-safe-modal { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; background: transparent !important; padding: 0 !important; } 
-          #a4-print-area, #a4-print-area * { visibility: visible; } 
-          #a4-print-area { position: absolute; left: 0; top: 0; width: 100%; display: block; margin: 0; padding: 0; } 
-          .a4-page { width: 100% !important; height: auto !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; border: none !important; box-shadow: none !important; background: white; page-break-after: always; box-sizing: border-box; } 
-          @page { size: A4 portrait; margin: 15mm; } 
-        }
-      `}</style>
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-50 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+      
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
         <div><h3 className="font-bold text-lg text-slate-800">Print Booking Form</h3></div>
-        <div className="flex space-x-3"><button onClick={() => setPrintingBookingForm(null)} className="px-4 py-2 border rounded">Close</button><button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded">Print To Liner</button></div>
+        <div className="flex space-x-3">
+          <button onClick={() => setPrintingBookingForm(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${b.id}-Booking.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">Print To Liner</button>
+        </div>
       </div>
       <div id="a4-print-area" className="flex flex-col items-center w-full pb-20">
         <div className="a4-page bg-white shadow-2xl border border-slate-200 relative flex flex-col p-10 box-border" style={{ width: '210mm', minHeight: '297mm' }}>
@@ -5868,7 +6054,7 @@ const PrintBookingFormOverlay = () => {
 
 const PrintCommercialInvoiceOverlay = () => {
   const { 
-    printingCommercialInvoice, setPrintingCommercialInvoice, handlePrintRequest, 
+    printingCommercialInvoice, setPrintingCommercialInvoice, handlePrintRequest, handleGeneratePDF, 
     companies, formatAddress, manifests, containerBookings, currentUser
   } = React.useContext(AppContext);
 
@@ -5882,7 +6068,7 @@ const PrintCommercialInvoiceOverlay = () => {
   const containerNumbers = Array.from(new Set(mList.map(m => m.containerNo))).filter(Boolean).join(', ');
   
   let jobNo = '';
-  let linerBooking = ci.bookingId || ''; // Try to take from CI or derived
+  let linerBooking = ''; // Set to blank initially
   const cTypes: Record<string, number> = {};
   mList.forEach(m => {
      if (m.bookingId) {
@@ -5892,7 +6078,7 @@ const PrintCommercialInvoiceOverlay = () => {
         const b = (containerBookings || []).find(x => x.id === bId);
         if (b) {
            if (b.bookingNo && !linerBooking) linerBooking = b.bookingNo;
-           const c = b.containers.find(x => x.id === cId);
+           const c = (b.containers || []).find((x: any) => x.id === cId);
            if (c && c.jobNo && !jobNo) jobNo = c.jobNo;
            if (c && c.containerTypeId) {
                cTypes[c.containerTypeId] = (cTypes[c.containerTypeId] || 0) + 1;
@@ -5904,26 +6090,16 @@ const PrintCommercialInvoiceOverlay = () => {
   const cTypeStrs = Object.entries(cTypes).map(([k, v]) => `${k} x ${v}`).join(', ');
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-[60] flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
-      <style>{`
-        @media print { 
-          html, body, #root { height: auto !important; overflow: visible !important; background: white !important; }
-          body * { visibility: hidden; } 
-          .no-print { display: none !important; } 
-          .print-safe-modal { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; background: transparent !important; padding: 0 !important; } 
-          #a4-print-area, #a4-print-area * { visibility: visible; } 
-          #a4-print-area { position: absolute; left: 0; top: 0; width: 100%; display: block; margin: 0; padding: 0; } 
-          .a4-page { width: 100% !important; height: auto !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; border: none !important; box-shadow: none !important; background: white; page-break-after: always; box-sizing: border-box; } 
-          @page { size: A4 portrait; margin: 15mm; } 
-        }
-      `}</style>
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-50 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+      
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
         <div>
            <h3 className="font-bold text-lg text-slate-800">Print Commercial Invoice / Packing List</h3>
            <p className="text-slate-500 text-sm">Review document before printing.</p>
         </div>
         <div className="flex space-x-3">
           <button onClick={() => setPrintingCommercialInvoice(null)} className="px-4 py-2 border rounded font-medium text-slate-600 hover:bg-slate-50">Close</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${printingCommercialInvoice.id}-CIPL.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors font-medium">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-emerald-600 text-white rounded font-medium shadow-sm hover:bg-emerald-700 flex items-center">
             <Printer className="w-4 h-4 mr-2" /> Print CI/PL
           </button>
@@ -6038,6 +6214,7 @@ const PrintCommercialInvoiceOverlay = () => {
                 <th className="p-2 font-bold border-r border-slate-800">Description of Goods</th>
                 <th className="p-2 font-bold border-r border-slate-800 text-center w-24">HS Code</th>
                 <th className="p-2 font-bold border-r border-slate-800 text-right w-24">Quantity</th>
+                <th className="p-2 font-bold border-r border-slate-800 text-right w-24">CBM</th>
                 <th className="p-2 font-bold text-right w-32">Total Val ({ci.currency})</th>
               </tr>
             </thead>
@@ -6049,6 +6226,7 @@ const PrintCommercialInvoiceOverlay = () => {
                      <td className="p-2 border-r border-slate-800 whitespace-pre-wrap">{line.product}</td>
                      <td className="p-2 border-r border-slate-800 text-center font-mono text-xs">{line.hsCode || '-'}</td>
                      <td className="p-2 border-r border-slate-800 text-right">{line.qty} <span className="text-xs text-slate-500">{line.uom}</span></td>
+                     <td className="p-2 border-r border-slate-800 text-right">{(parseFloat(line.cbm) || 0).toFixed(3)}</td>
                      <td className="p-2 text-right">{(parseFloat(line.totalValue) || 0).toFixed(2)}</td>
                    </tr>
                  );
@@ -6059,6 +6237,9 @@ const PrintCommercialInvoiceOverlay = () => {
                 <td colSpan="3" className="p-2 border-r border-slate-800 text-right font-bold uppercase text-xs">Total:</td>
                 <td className="p-2 border-r border-slate-800 text-right font-bold">
                    {(ci.lines || []).reduce((sum, line) => sum + (parseFloat(line.qty) || 0), 0)}
+                </td>
+                <td className="p-2 border-r border-slate-800 text-right font-bold">
+                   {(ci.lines || []).reduce((sum, line) => sum + (parseFloat(line.cbm) || 0), 0).toFixed(3)}
                 </td>
                 <td className="p-2 text-right font-bold text-base bg-slate-100">
                    {ci.currency} {(ci.totalValue || 0).toFixed(2)}
@@ -6079,28 +6260,21 @@ const PrintCommercialInvoiceOverlay = () => {
 };
 
 const PrintReturnNoteOverlay = () => {
-  const { printingReturnNote, setPrintingReturnNote, handlePrintRequest, receipts } = React.useContext(AppContext);
+  const { printingReturnNote, setPrintingReturnNote, handlePrintRequest, handleGeneratePDF, receipts } = React.useContext(AppContext);
   if (!printingReturnNote) return null;
   const ret = printingReturnNote;
   const receipt = (receipts || []).find(r => r.id === ret.receiptId) || {};
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-[60] flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
-      <style>{`
-        @media print { 
-          html, body, #root { height: auto !important; overflow: visible !important; background: white !important; }
-          body * { visibility: hidden; } 
-          .no-print { display: none !important; } 
-          .print-safe-modal { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; background: transparent !important; padding: 0 !important; } 
-          #a4-print-area, #a4-print-area * { visibility: visible; } 
-          #a4-print-area { position: absolute; left: 0; top: 0; width: 100%; display: block; margin: 0; padding: 0; } 
-          .a4-page { width: 100% !important; height: auto !important; min-height: 0 !important; padding: 0 !important; margin: 0 !important; border: none !important; box-shadow: none !important; background: white; page-break-after: always; box-sizing: border-box; } 
-          @page { size: A4 portrait; margin: 15mm; } 
-        }
-      `}</style>
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-50 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+      
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
         <div><h3 className="font-bold text-lg text-slate-800">Print Return Note</h3></div>
-        <div className="flex space-x-3"><button onClick={() => setPrintingReturnNote(null)} className="px-4 py-2 border rounded">Close</button><button onClick={handlePrintRequest} className="px-4 py-2 bg-orange-600 text-white rounded">Print Return Note</button></div>
+        <div className="flex space-x-3">
+          <button onClick={() => setPrintingReturnNote(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${ret.id}-ReturnNote.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={handlePrintRequest} className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors">Print Return Note</button>
+        </div>
       </div>
       <div id="a4-print-area" className="flex flex-col items-center w-full pb-20">
         <div className="a4-page bg-white shadow-2xl border border-slate-200 relative flex flex-col" style={{ width: '210mm', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box' }}>
@@ -6553,8 +6727,25 @@ export default function App() {
     setActiveTab('dashboard');
   };
 
-  const logActivity = (action, module, recordId, details = '') => {
+  const compareChanges = (oldObj, newObj) => {
+    if (!oldObj || !newObj) return '';
+    const changes = [];
+    const keysToIgnore = ['id', 'date', 'lines', 'fclProducts', 'fclBilling', 'containers', 'routeLogs'];
+    Object.keys(newObj).forEach(key => {
+      if (keysToIgnore.includes(key)) return;
+      if (JSON.stringify(oldObj[key]) !== JSON.stringify(newObj[key])) {
+        changes.push(`${key}: '${oldObj[key] || '-'}' -> '${newObj[key] || '-'}'`);
+      }
+    });
+    return changes.length > 0 ? ` Changes: ${changes.join(', ')}` : '';
+  };
+
+  const logActivity = (action, module, recordId, details = '', oldRecord = null, newRecord = null) => {
     if (!currentUser) return;
+    let finalDetails = details;
+    if (action === 'UPDATE' && oldRecord && newRecord) {
+       finalDetails += compareChanges(oldRecord, newRecord);
+    }
     const newLog = {
       id: Date.now().toString(),
       date: new Date().toISOString(),
@@ -6563,7 +6754,7 @@ export default function App() {
       action,
       module,
       recordId,
-      details
+      details: finalDetails
     };
     setDoc(doc(db, 'activityLogs', newLog.id), newLog)
       .catch(err => handleFirestoreError(err, OperationType.WRITE, `activityLogs/${newLog.id}`));
@@ -6765,6 +6956,27 @@ export default function App() {
     }
   };
 
+  const handleGeneratePDF = (elementId, filename = 'document.pdf') => {
+    import('html2pdf.js').then((module) => {
+      const html2pdf = (module.default ? module.default : module) as any;
+      const element = document.getElementById(elementId);
+      if (!element) return showMessage("Document content not found.", "error");
+      
+      const opt = {
+        margin:       [10, 10, 10, 10], // top, left, bottom, right in mm
+        filename:     filename,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' }
+      };
+      
+      html2pdf().set(opt).from(element).save();
+    }).catch(err => {
+      console.error(err);
+      showMessage("Failed to load PDF generator.", "error");
+    });
+  };
+
   const generateShipmentId = (dateObj, pol, pod, countersMap) => {
     const d = dateObj ? new Date(dateObj) : new Date();
     const yy = String(d.getFullYear()).slice(-2);
@@ -6945,6 +7157,7 @@ export default function App() {
     printingDeliveryOrders, setPrintingDeliveryOrders,
     printingReturnNote, setPrintingReturnNote,
     printingPickupNote, setPrintingPickupNote,
+    printingBookingForm, setPrintingBookingForm,
     printingCommercialInvoice, setPrintingCommercialInvoice,
     editManifestId, setEditManifestId,
     editCommercialInvoiceId, setEditCommercialInvoiceId,
@@ -6956,7 +7169,7 @@ export default function App() {
     convertPickupToReceiptData, setConvertPickupToReceiptData,
     globalTrackSearch, setGlobalTrackSearch,
     showMessage, closeMessage, checkAccess,
-    handlePrintRequest, generateShipmentId, generateReturnNo,
+    handlePrintRequest, handleGeneratePDF, generateShipmentId, generateReturnNo,
     generateManifestNo, generateBreakbulkNo, generatePickupNo, generateBookingNo, generateLineHBL, generateCommercialInvoiceNo,
     calculateCBM, getActiveInventory, formatDate, formatPrintDate, formatAddress
   };
@@ -7031,7 +7244,7 @@ export default function App() {
                         <button title="Pickup Requests" onClick={() => setActiveTab('pickup-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'pickup-list' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Pickup Requests</span>}</button>
                       )}
                       {checkAccess('manifests', 'create') && showModule('new container booking') && (
-                        <button title="New Container Booking" onClick={() => { setActiveTab('new-booking'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-booking' ? 'bg-sky-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><Ship className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New Container Booking</span>}</button>
+                        <button title="New Container Booking" onClick={() => { setEditBookingId(null); setActiveTab('new-booking'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-booking' ? 'bg-sky-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><Ship className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New Container Booking</span>}</button>
                       )}
                       {showModule('container bookings') && (
                         <button title="Container Bookings" onClick={() => setActiveTab('booking-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'booking-list' ? 'bg-sky-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Container Bookings</span>}</button>
@@ -7047,18 +7260,7 @@ export default function App() {
                 </>
               )}
 
-              {(currentUser?.isWarehouseOperator || currentUser?.roleId === 'role-superadmin') && (
-                <>
-                  <div className="pt-4 pb-2 px-4 flex items-center justify-between text-slate-500">
-                    {isSidebarCollapsed ? <div className="h-px w-full bg-slate-700 my-2"></div> : <p className="text-xs font-semibold uppercase tracking-wider text-left">De-Consolidation</p>}
-                  </div>
-                  <button title="Warehouse Ops" onClick={() => setActiveTab('warehouse-decon')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'warehouse-decon' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}>
-                    <Boxes className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Inbound Dashboard</span>}
-                  </button>
-                </>
-              )}
-              
-              {checkAccess('manifests', 'view') && showGroup('lcl outbound', 'new manifest', 'manifests', 'ci/pl', 'new ci/pl', 'new lcl shipment', 'shipments') && (
+              {checkAccess('manifests', 'view') && showGroup('outbound', 'new manifest', 'manifests', 'ci/pl', 'new ci/pl', 'new lcl shipment', 'shipments', 'inbound dashboard') && (
                 <>
                   <div 
                     className="pt-4 pb-2 px-4 cursor-pointer hover:text-slate-300 flex items-center justify-between text-slate-500"
@@ -7066,13 +7268,18 @@ export default function App() {
                   >
                     {isSidebarCollapsed ? <div className="h-px w-full bg-slate-700 my-2"></div> : (
                       <>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-left">LCL Outbound</p>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-left">Outbound</p>
                         {collapsedGroups.outbound ? <ChevronRight className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
                       </>
                     )}
                   </div>
                   {(!collapsedGroups.outbound || isSidebarCollapsed || !!moduleSearch) && (
                     <>
+                      {(currentUser?.isWarehouseOperator || currentUser?.roleId === 'role-superadmin') && showModule('inbound dashboard') && (
+                        <button title="Warehouse Ops" onClick={() => setActiveTab('warehouse-decon')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'warehouse-decon' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}>
+                          <Boxes className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Inbound Dashboard</span>}
+                        </button>
+                      )}
                       {checkAccess('receipts', 'create') && showModule('new lcl shipment') && (
                         <button title="New LCL Shipment" onClick={() => { setConvertPickupToReceiptData(null); setEditReceiptId(null); setActiveTab('new-receipt'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-receipt' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><PackagePlus className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New LCL Shipment</span>}</button>
                       )}

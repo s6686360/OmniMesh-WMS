@@ -14,7 +14,7 @@ export const PrintCommercialInvoiceOverlay = ({ AppContext }) => {
   const declCompany = (companies || []).find(c => c.id === ci.declCompanyId) || { name: 'Unknown Company' };
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-[60] flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
       <style>{`
         @media print { 
           html, body, #root { height: auto !important; overflow: visible !important; background: white !important; }
@@ -27,7 +27,7 @@ export const PrintCommercialInvoiceOverlay = ({ AppContext }) => {
           @page { size: A4 portrait; margin: 15mm; } 
         }
       `}</style>
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-50 no-print">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
         <div>
            <h3 className="font-bold text-lg text-slate-800">Print Commercial Invoice / Packing List</h3>
            <p className="text-slate-500 text-sm">Review document before printing.</p>
@@ -116,6 +116,7 @@ export const PrintCommercialInvoiceOverlay = ({ AppContext }) => {
                 <th className="p-2 font-bold border-r border-slate-800">Description of Goods</th>
                 <th className="p-2 font-bold border-r border-slate-800 text-center w-24">HS Code</th>
                 <th className="p-2 font-bold border-r border-slate-800 text-right w-24">Quantity</th>
+                <th className="p-2 font-bold border-r border-slate-800 text-right w-24">CBM</th>
                 <th className="p-2 font-bold text-right w-32">Total Val ({ci.currency})</th>
               </tr>
             </thead>
@@ -127,6 +128,7 @@ export const PrintCommercialInvoiceOverlay = ({ AppContext }) => {
                      <td className="p-2 border-r border-slate-800 whitespace-pre-wrap">{line.product}</td>
                      <td className="p-2 border-r border-slate-800 text-center font-mono text-xs">{line.hsCode || '-'}</td>
                      <td className="p-2 border-r border-slate-800 text-right">{line.qty} <span className="text-xs text-slate-500">{line.uom}</span></td>
+                     <td className="p-2 border-r border-slate-800 text-right">{(parseFloat(line.cbm) || 0).toFixed(3)}</td>
                      <td className="p-2 text-right">{(parseFloat(line.totalValue) || 0).toFixed(2)}</td>
                    </tr>
                  );
@@ -137,6 +139,9 @@ export const PrintCommercialInvoiceOverlay = ({ AppContext }) => {
                 <td colSpan="3" className="p-2 border-r border-slate-800 text-right font-bold uppercase text-xs">Total:</td>
                 <td className="p-2 border-r border-slate-800 text-right font-bold">
                    {(ci.lines || []).reduce((sum, line) => sum + (parseFloat(line.qty) || 0), 0)}
+                </td>
+                <td className="p-2 border-r border-slate-800 text-right font-bold">
+                   {(ci.lines || []).reduce((sum, line) => sum + (parseFloat(line.cbm) || 0), 0).toFixed(3)}
                 </td>
                 <td className="p-2 text-right font-bold text-base bg-slate-100">
                    {ci.currency} {(ci.totalValue || 0).toFixed(2)}
