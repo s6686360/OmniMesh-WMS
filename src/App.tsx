@@ -4929,9 +4929,17 @@ const ContainerBookingList = () => {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {(containerBookings || []).map(b => {
+              const fclContainerIds = new Set((b.containers || []).filter((c: any) => c.usageType === 'FCL').map((c: any) => c.id));
               const mList = (manifests || []).filter(m => m.bookingId && m.bookingId.startsWith(b.id + '::'));
-              const totalManifestCbm = mList.reduce((acc, m) => acc + (m.totalCBM || 0), 0);
-              const totalManifestWgt = mList.reduce((acc, m) => acc + (m.totalWeight || 0), 0);
+              
+              // Only include LCL manifests in the capacity computations
+              const lclMList = mList.filter(m => {
+                  const [, cId] = m.bookingId.split('::');
+                  return !fclContainerIds.has(cId);
+              });
+
+              const totalManifestCbm = lclMList.reduce((acc, m) => acc + (m.totalCBM || 0), 0);
+              const totalManifestWgt = lclMList.reduce((acc, m) => acc + (m.totalWeight || 0), 0);
               
               let maxCbm = 0;
               let maxWgt = 0;
@@ -4953,6 +4961,7 @@ const ContainerBookingList = () => {
                   }
               });
               
+              const isAllFcl = maxCbm === 0 && maxWgt === 0;
               if (maxCbm === 0) maxCbm = 1; // Prevent div by 0 if FCL only
               if (maxWgt === 0) maxWgt = 1;
               
@@ -4998,14 +5007,26 @@ const ContainerBookingList = () => {
                   </td>
                   <td className="p-4 font-semibold text-slate-800">{typesSummary}</td>
                   <td className="p-4 text-right">
-                    <p className="text-sm font-bold text-slate-800" title="Occupied / Max">{totalManifestCbm.toFixed(2)} / {maxCbm}</p>
-                    <p className={`text-xs mt-1 font-bold ${parsedCbm >= 90 ? 'text-red-500' : 'text-blue-600'}`}>{cbmPct}% Occ.</p>
-                    <p className="text-xs text-emerald-600 font-semibold mt-1" title="Available Space">{balCbm.toFixed(2)} Left ({balCbmPct}%)</p>
+                    {isAllFcl ? (
+                       <p className="text-sm font-bold text-slate-400">N/A (FCL Only)</p>
+                    ) : (
+                       <>
+                         <p className="text-sm font-bold text-slate-800" title="Occupied / Max">{totalManifestCbm.toFixed(2)} / {maxCbm}</p>
+                         <p className={`text-xs mt-1 font-bold ${parsedCbm >= 90 ? 'text-red-500' : 'text-blue-600'}`}>{cbmPct}% Occ.</p>
+                         <p className="text-xs text-emerald-600 font-semibold mt-1" title="Available Space">{balCbm.toFixed(2)} Left ({balCbmPct}%)</p>
+                       </>
+                    )}
                   </td>
                   <td className="p-4 text-right">
-                    <p className="text-sm font-bold text-slate-800" title="Occupied / Max">{totalManifestWgt.toFixed(0)} / {maxWgt}</p>
-                    <p className={`text-xs mt-1 font-bold ${parsedWgt >= 90 ? 'text-red-500' : 'text-blue-600'}`}>{wgtPct}% Occ.</p>
-                    <p className="text-xs text-emerald-600 font-semibold mt-1" title="Available Weight">{balWgt.toFixed(0)} Left ({balWgtPct}%)</p>
+                    {isAllFcl ? (
+                       <p className="text-sm font-bold text-slate-400">N/A (FCL Only)</p>
+                    ) : (
+                       <>
+                         <p className="text-sm font-bold text-slate-800" title="Occupied / Max">{totalManifestWgt.toFixed(0)} / {maxWgt}</p>
+                         <p className={`text-xs mt-1 font-bold ${parsedWgt >= 90 ? 'text-red-500' : 'text-blue-600'}`}>{wgtPct}% Occ.</p>
+                         <p className="text-xs text-emerald-600 font-semibold mt-1" title="Available Weight">{balWgt.toFixed(0)} Left ({balWgtPct}%)</p>
+                       </>
+                    )}
                   </td>
                   <td className="p-4 text-center space-y-2">
                     <button onClick={() => { setEditBookingId(b.id); setActiveTab('new-booking'); }} className="px-3 py-1 bg-sky-50 text-sky-700 hover:bg-sky-100 rounded font-medium text-xs w-full block">Edit</button>
