@@ -8,11 +8,12 @@ import {
   LayoutDashboard, PackagePlus, List, Undo2, Boxes, Plus, Trash2, Save,
   Search, FileText, Ship, ClipboardList, MapPin, Container, Printer,
   X, Database, Split, FileDown, ArrowUpDown, CheckCircle, AlertCircle,
-  LogOut, UserCircle, Lock, ShieldAlert, Settings, Truck, Edit, Link, ChevronLeft, ChevronRight, ChevronDown, Calendar, Bell, Flag, Check, Inbox
+  LogOut, UserCircle, Lock, ShieldAlert, Settings, Truck, Edit, Link, ChevronLeft, ChevronRight, ChevronDown, Calendar, Bell, Flag, Check, Inbox, BookOpen
 } from 'lucide-react';
 import { CommercialInvoiceForm } from './CommercialInvoiceForm';
 import { CommercialInvoiceList } from './CommercialInvoiceList';
 import { ReportModule } from './ReportModule';
+import { HandbookOverlay } from './HandbookOverlay';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -6956,6 +6957,7 @@ export default function App() {
 
   const [notifications, setNotifications] = useState([]);
   const [inboxOpen, setInboxOpen] = useState(false);
+  const [handbookOpen, setHandbookOpen] = useState(false);
 
   const pushNotificationToRelatedUsers = (relatedCompanyNames, title, message) => {
      if (!relatedCompanyNames || relatedCompanyNames.length === 0) return;
@@ -7438,10 +7440,10 @@ export default function App() {
                         <button title="Pickup Requests" onClick={() => setActiveTab('pickup-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'pickup-list' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Pickup Requests</span>}</button>
                       )}
                       {checkAccess('manifests', 'create') && showModule('new container booking') && (
-                        <button title="New Container Booking" onClick={() => { setEditBookingId(null); setActiveTab('new-booking'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-booking' ? 'bg-sky-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><Ship className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New Container Booking</span>}</button>
+                        <button title="New Container Booking" onClick={() => { setEditBookingId(null); setActiveTab('new-booking'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-booking' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><Ship className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New Container Booking</span>}</button>
                       )}
                       {showModule('container bookings') && (
-                        <button title="Container Bookings" onClick={() => setActiveTab('booking-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'booking-list' ? 'bg-sky-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Container Bookings</span>}</button>
+                        <button title="Container Bookings" onClick={() => setActiveTab('booking-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'booking-list' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Container Bookings</span>}</button>
                       )}
                       {checkAccess('manifests', 'create') && showModule('new haulier') && (
                         <button title="New Haulier" onClick={() => { setEditHaulierBookingId(null); setActiveTab('new-haulier-booking'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-haulier-booking' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><Truck className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New Haulier</span>}</button>
@@ -7621,6 +7623,13 @@ export default function App() {
               </div>
               <div className="flex items-center space-x-4">
                 <button 
+                   onClick={() => setHandbookOpen(true)}
+                   title="Open Handbook"
+                   className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 transition-colors text-slate-600"
+                >
+                   <BookOpen className="w-5 h-5" />
+                </button>
+                <button 
                    onClick={() => setInboxOpen(true)}
                    className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 transition-colors"
                 >
@@ -7678,6 +7687,7 @@ export default function App() {
           <PrintCommercialInvoiceOverlay />
           <PrintReturnNoteOverlay />
           <PrintPickupNoteOverlay />
+          <HandbookOverlay isOpen={handbookOpen} onClose={() => setHandbookOpen(false)} />
           <InboxSidebar />
         </div>
       )}
