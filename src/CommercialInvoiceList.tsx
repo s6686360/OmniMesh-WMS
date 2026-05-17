@@ -5,7 +5,7 @@ export const CommercialInvoiceList = ({ AppContext }) => {
   const { 
     checkAccess, commercialInvoices, 
     setEditCommercialInvoiceId, setActiveTab, setPrintingCommercialInvoice, showMessage,
-    companies, formatDate, db, doc, deleteDoc, handleFirestoreError, OperationType
+    companies, formatDate, db, doc, deleteDoc, handleFirestoreError, OperationType, openRecordInNewWindow
   } = React.useContext(AppContext);
 
   if (!checkAccess('commercial_invoices', 'view')) {
@@ -94,9 +94,26 @@ export const CommercialInvoiceList = ({ AppContext }) => {
                   </tr>
                   {(groupInvoices as typeof filtered).map(ci => (
                     <tr key={ci.id} className="hover:bg-slate-50">
-                      <td className="p-4 font-bold text-slate-800">{ci.id}</td>
+                      <td className="p-4 font-bold text-slate-800">
+                        <button 
+                          onClick={() => openRecordInNewWindow('new-commercial-invoice', ci.id)}
+                          className="text-blue-600 underline hover:text-blue-800 text-left font-bold"
+                        >
+                          {ci.id}
+                        </button>
+                      </td>
                       <td className="p-4 text-sm text-slate-600">
-                        <span className="font-semibold text-blue-700">{(ci.manifestIds || []).join(', ')}</span><br/>
+                        <div className="flex flex-wrap gap-1 mb-1">
+                          {(ci.manifestIds || []).map((mid, idx) => (
+                            <button 
+                              key={idx}
+                              onClick={() => openRecordInNewWindow('new-manifest', mid)}
+                              className="font-semibold text-blue-600 underline hover:text-blue-800 px-1 bg-blue-50 rounded"
+                            >
+                              {mid}
+                            </button>
+                          ))}
+                        </div>
                         <span className="text-xs text-slate-500">HBL: {ci.hblNo || '-'}</span>
                       </td>
                       <td className="p-4 text-sm font-semibold text-slate-700">{ci.type || 'LCL'}</td>

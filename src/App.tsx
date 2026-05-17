@@ -135,7 +135,7 @@ const formatAddress = (addrObj) => {
 };
 
 const DashboardView = () => {
-  const { currentUser, checkAccess, getActiveInventory, manifests, receipts, returns, containerBookings, containerTypes, formatDate, pickups, companies } = React.useContext(AppContext);
+  const { currentUser, checkAccess, getActiveInventory, manifests, receipts, returns, containerBookings, containerTypes, formatDate, pickups, companies, openRecordInNewWindow, openSearchInNewWindow } = React.useContext(AppContext);
   const [dashboardTimeframe, setDashboardTimeframe] = useState('Month');
 
   if (!checkAccess('dashboard', 'view')) return <div className="p-8 text-center text-slate-500">You do not have permission to view the Dashboard.</div>;
@@ -222,6 +222,28 @@ const DashboardView = () => {
          }
       });
       
+      const containerDetails = (b.containers || []).filter(c => c.usageType === 'LCL').map(c => {
+         const manifestsForContainer = (manifests || []).filter(m => m.bookingId === `${b.id}::${c.id}`);
+         const cAssignedCbm = manifestsForContainer.reduce((sum, m) => sum + (m.totalCBM || 0), 0);
+         const cAssignedWeight = manifestsForContainer.reduce((sum, m) => sum + (m.totalWeight || 0), 0);
+         
+         const t = containerTypes?.find(ct => ct.type === c.containerTypeId);
+         const cMaxCbm = parseFloat(t?.maxCbm) || 0;
+         const cMaxWeight = parseFloat(t?.maxWeight) || 0;
+         
+         return {
+            containerId: c.id,
+            containerNo: c.containerNo,
+            containerTypeId: c.containerTypeId,
+            assignedCbm: cAssignedCbm,
+            assignedWeight: cAssignedWeight,
+            maxCbm: cMaxCbm,
+            maxWeight: cMaxWeight,
+            occCbm: cMaxCbm > 0 ? ((cAssignedCbm / cMaxCbm) * 100).toFixed(1) : 0,
+            occWeight: cMaxWeight > 0 ? ((cAssignedWeight / cMaxWeight) * 100).toFixed(1) : 0
+         };
+      });
+
       dates[dateKey].push({
          booking: b,
          route,
@@ -234,7 +256,8 @@ const DashboardView = () => {
          maxCbm,
          maxWeight,
          occCbm: maxCbm > 0 ? ((assignedCbm / maxCbm) * 100).toFixed(1) : 0,
-         occWeight: maxWeight > 0 ? ((assignedWeight / maxWeight) * 100).toFixed(1) : 0
+         occWeight: maxWeight > 0 ? ((assignedWeight / maxWeight) * 100).toFixed(1) : 0,
+         containerDetails
       });
     });
     
@@ -387,7 +410,12 @@ const DashboardView = () => {
                                 <div key={idx} className="p-3 bg-white text-sm flex flex-col space-y-1 hover:bg-slate-50 transition">
                                    <div className="flex justify-between items-center">
                                       <span className="font-semibold text-blue-800">{it.route}</span>
-                                      <span className="text-xs text-slate-400 font-mono">{it.booking.id}</span>
+                                      <button 
+                                        onClick={() => openRecordInNewWindow('new-booking', it.booking.id)}
+                                        className="text-xs font-mono text-blue-600 underline hover:text-blue-800 transition-colors"
+                                      >
+                                        {it.booking.id}
+                                      </button>
                                    </div>
                                    <div className="text-xs text-slate-600 flex justify-between items-center mt-1">
                                       <span className="font-semibold text-slate-700 truncate max-w-[150px]">{it.customer}</span>
@@ -406,26 +434,68 @@ const DashboardView = () => {
                                 <div key={idx} className="p-3 bg-white text-sm flex flex-col space-y-1 hover:bg-slate-50 transition">
                                    <div className="flex justify-between items-center">
                                       <span className="font-semibold text-indigo-800">{it.route}</span>
-                                      <span className="text-xs text-slate-400 font-mono">{it.booking.id}</span>
+                                      <button 
+                                        onClick={() => openRecordInNewWindow('new-booking', it.booking.id)}
+                                        className="text-xs font-mono text-blue-600 underline hover:text-blue-800 transition-colors"
+                                      >
+                                        {it.booking.id}
+                                      </button>
                                    </div>
-                                   <div className="grid grid-cols-2 gap-2 mt-2">
-                                     <div className="bg-slate-50 p-2 border border-slate-100 rounded">
-                                        <p className="text-[10px] uppercase text-slate-400 font-bold">Assigned / Max CBM</p>
-                                        <div className="flex items-end justify-between">
-                                          <p className="font-bold text-slate-700">{Number(it.assignedCbm).toFixed(2)} / {Number(it.maxCbm).toFixed(2)}</p>
-                                          <span className={`text-xs font-bold leading-none ${Number(it.occCbm) > 90 ? 'text-red-600' : Number(it.occCbm) > 60 ? 'text-orange-500' : 'text-emerald-600'}`}>{it.occCbm}%</span>
-                                        </div>
-                                        <p className="text-[10px] font-semibold text-emerald-600 mt-1">Bal: {Math.max((Number(it.maxCbm) - Number(it.assignedCbm)), 0).toFixed(2)}</p>
-                                     </div>
-                                     <div className="bg-slate-50 p-2 border border-slate-100 rounded">
-                                        <p className="text-[10px] uppercase text-slate-400 font-bold">Assigned / Max WGT</p>
-                                        <div className="flex items-end justify-between">
-                                          <p className="font-bold text-slate-700">{Number(it.assignedWeight).toFixed(0)} / {Number(it.maxWeight).toFixed(0)}</p>
-                                          <span className={`text-xs font-bold leading-none ${Number(it.occWeight) > 90 ? 'text-red-600' : Number(it.occWeight) > 60 ? 'text-orange-500' : 'text-emerald-600'}`}>{it.occWeight}%</span>
-                                        </div>
-                                        <p className="text-[10px] font-semibold text-emerald-600 mt-1">Bal: {Math.max((Number(it.maxWeight) - Number(it.assignedWeight)), 0).toFixed(0)}</p>
-                                     </div>
-                                   </div>
+                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                      <div className="bg-slate-50 p-2 border border-slate-100 rounded">
+                                         <p className="text-[10px] uppercase text-slate-400 font-bold">Assigned / Max CBM</p>
+                                         <div className="flex items-end justify-between">
+                                           <p className="font-bold text-slate-700">{Number(it.assignedCbm).toFixed(2)} / {Number(it.maxCbm).toFixed(2)}</p>
+                                           <span className={`text-xs font-bold leading-none ${Number(it.occCbm) > 90 ? 'text-red-600' : Number(it.occCbm) > 60 ? 'text-orange-500' : 'text-emerald-600'}`}>{it.occCbm}%</span>
+                                         </div>
+                                         <p className="text-[10px] font-semibold text-emerald-600 mt-1">Bal: {Math.max((Number(it.maxCbm) - Number(it.assignedCbm)), 0).toFixed(2)}</p>
+                                      </div>
+                                      <div className="bg-slate-50 p-2 border border-slate-100 rounded">
+                                         <p className="text-[10px] uppercase text-slate-400 font-bold">Assigned / Max WGT</p>
+                                         <div className="flex items-end justify-between">
+                                           <p className="font-bold text-slate-700">{Number(it.assignedWeight).toFixed(0)} / {Number(it.maxWeight).toFixed(0)}</p>
+                                           <span className={`text-xs font-bold leading-none ${Number(it.occWeight) > 90 ? 'text-red-600' : Number(it.occWeight) > 60 ? 'text-orange-500' : 'text-emerald-600'}`}>{it.occWeight}%</span>
+                                         </div>
+                                         <p className="text-[10px] font-semibold text-emerald-600 mt-1">Bal: {Math.max((Number(it.maxWeight) - Number(it.assignedWeight)), 0).toFixed(0)}</p>
+                                      </div>
+                                    </div>
+                                    
+                                    {it.containerDetails && it.containerDetails.length > 0 && (
+                                       <div className="mt-2 border-t border-slate-100 pt-2 space-y-1.5">
+                                          <p className="text-[9px] uppercase text-slate-400 font-bold tracking-wider">Containers Breakdown</p>
+                                          <div className="space-y-1">
+                                             {it.containerDetails.map((c: any, cIdx: number) => (
+                                                <div key={cIdx} className="bg-indigo-50/30 p-1.5 rounded text-[10px] border border-indigo-100/50">
+                                                   <div className="flex justify-between font-bold mb-0.5">
+                                                      <button 
+                                                        onClick={() => {
+                                                          if (c.containerNo) {
+                                                            openSearchInNewWindow(c.containerNo);
+                                                          }
+                                                        }}
+                                                        className="text-indigo-700 font-mono italic truncate max-w-[120px] hover:underline cursor-pointer text-left"
+                                                      >
+                                                        {c.containerNo || 'No Number'}
+                                                      </button>
+                                                      <span className="text-slate-500">{c.containerTypeId}</span>
+                                                   </div>
+                                                   <div className="flex justify-between gap-2 overflow-hidden">
+                                                      <div className="whitespace-nowrap">
+                                                         <span className="text-slate-400">CBM: </span>
+                                                         <span className="font-semibold text-slate-700">{c.assignedCbm.toFixed(2)}/{c.maxCbm.toFixed(2)}</span>
+                                                         <span className={`ml-1 font-bold ${Number(c.occCbm) > 90 ? 'text-red-600' : 'text-slate-600'}`}>({c.occCbm}%)</span>
+                                                      </div>
+                                                      <div className="whitespace-nowrap text-right">
+                                                         <span className="text-slate-400">Wgt: </span>
+                                                         <span className="font-semibold text-slate-700">{c.assignedWeight.toFixed(0)}/{c.maxWeight.toFixed(0)}</span>
+                                                         <span className={`ml-1 font-bold ${Number(c.occWeight) > 90 ? 'text-red-600' : 'text-slate-600'}`}>({c.occWeight}%)</span>
+                                                      </div>
+                                                   </div>
+                                                </div>
+                                             ))}
+                                          </div>
+                                       </div>
+                                    )}
                                 </div>
                              ))}
                           </div>
@@ -441,7 +511,12 @@ const DashboardView = () => {
 };
 
 const TrackCargoView = () => {
-  const { receipts, manifests, returns, pickups, commercialInvoices, companies, containerBookings, currentUser, globalTrackSearch, setGlobalTrackSearch, formatDate, setActiveTab, setEditCommercialInvoiceId, setEditReceiptId, setEditManifestId } = React.useContext(AppContext);
+  const { 
+    receipts, manifests, returns, pickups, commercialInvoices, companies, containerBookings, 
+    currentUser, globalTrackSearch, setGlobalTrackSearch, formatDate, setActiveTab, 
+    setEditCommercialInvoiceId, setEditReceiptId, setEditManifestId, setEditPickupId, setEditReturnId,
+    openRecordInNewWindow
+  } = React.useContext(AppContext);
 
   const handleSearch = (e) => {
     setGlobalTrackSearch(e.target.value.toUpperCase());
@@ -561,7 +636,7 @@ const TrackCargoView = () => {
                 <div className="bg-blue-50 p-6 border-b border-blue-100 flex justify-between items-start">
                   <div>
                     <span className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-bold uppercase tracking-wider mb-2 inline-block">Shipment Record</span>
-                    <h3 className="text-2xl font-black text-blue-900 cursor-pointer hover:underline" onClick={() => { setActiveTab('new-receipt'); setEditReceiptId(r.id); setGlobalTrackSearch(''); }}>{r.id}</h3>
+                    <h3 className="text-2xl font-black text-blue-600 underline cursor-pointer hover:text-blue-800" onClick={() => openRecordInNewWindow('new-receipt', r.id)}>{r.id}</h3>
                     <p className="text-sm text-blue-700 mt-1 font-medium">Date Received: {formatDate(r.date)} | Shipper DO: <span className="font-mono">{r.shipperDoNo || '-'}</span></p>
                   </div>
                   <div className="text-right">
@@ -595,7 +670,7 @@ const TrackCargoView = () => {
                           {mForReceipt.map((m, idx) => (
                             <div key={idx} className="p-3 border border-teal-200 rounded-lg bg-teal-50/30">
                               <div className="flex justify-between border-b border-teal-100 pb-2 mb-2">
-                                <span className="font-bold text-teal-800">{m.mId}</span>
+                                <span className="font-bold text-blue-600 underline cursor-pointer hover:text-blue-800" onClick={() => openRecordInNewWindow('new-manifest', m.mId)}>{m.mId}</span>
                                 <span className="text-xs text-teal-600 font-medium">{formatDate(m.date)}</span>
                               </div>
                               <div className="text-sm space-y-1">
@@ -617,7 +692,7 @@ const TrackCargoView = () => {
                           {rForReceipt.map((ret, idx) => (
                             <div key={idx} className="p-3 border border-orange-200 rounded-lg bg-orange-50/30">
                               <div className="flex justify-between border-b border-orange-100 pb-2 mb-2">
-                                <span className="font-bold text-orange-800">{ret.id}</span>
+                                <span className="font-bold text-blue-600 underline cursor-pointer hover:text-blue-800" onClick={() => openRecordInNewWindow('new-return', ret.id)}>{ret.id}</span>
                                 <span className="text-xs text-orange-600 font-medium">{formatDate(ret.date)}</span>
                               </div>
                               <div className="text-sm space-y-1">
@@ -641,7 +716,7 @@ const TrackCargoView = () => {
                 <div className="bg-indigo-50 p-6 border-b border-indigo-100 flex justify-between items-start">
                   <div>
                     <span className="bg-indigo-600 text-white px-2 py-1 rounded text-xs font-bold uppercase tracking-wider mb-2 inline-block">Pickup Request</span>
-                    <h3 className="text-2xl font-black text-indigo-900 cursor-pointer hover:underline" onClick={() => { setActiveTab('new-pickup'); setEditPickupId(p.id); setGlobalTrackSearch(''); }}>{p.id}</h3>
+                    <h3 className="text-2xl font-black text-blue-600 underline cursor-pointer hover:text-blue-800" onClick={() => openRecordInNewWindow('new-pickup', p.id)}>{p.id}</h3>
                     <p className="text-sm text-indigo-700 mt-1 font-medium">Date: {formatDate(p.date)}</p>
                   </div>
                   <div className="text-right">
@@ -667,7 +742,7 @@ const TrackCargoView = () => {
                 <div className="bg-orange-50 p-6 border-b border-orange-100 flex justify-between items-start">
                   <div>
                     <span className="bg-orange-600 text-white px-2 py-1 rounded text-xs font-bold uppercase tracking-wider mb-2 inline-block">Return Note</span>
-                    <h3 className="text-2xl font-black text-orange-900 cursor-pointer hover:underline" onClick={() => { setActiveTab('new-return'); setEditReturnId(ret.id); setGlobalTrackSearch(''); }}>{ret.id}</h3>
+                    <h3 className="text-2xl font-black text-blue-600 underline cursor-pointer hover:text-blue-800" onClick={() => openRecordInNewWindow('new-return', ret.id)}>{ret.id}</h3>
                     <p className="text-sm text-orange-700 mt-1 font-medium">Date: {formatDate(ret.date)}</p>
                   </div>
                   <div className="text-right">
@@ -700,7 +775,7 @@ const TrackCargoView = () => {
                 <div className="bg-teal-50 p-6 border-b border-teal-100 flex justify-between items-start">
                   <div>
                     <span className="bg-teal-600 text-white px-2 py-1 rounded text-xs font-bold uppercase tracking-wider mb-2 inline-block">Manifest</span>
-                    <h3 className="text-2xl font-black text-teal-900 cursor-pointer hover:underline" onClick={() => { setActiveTab('new-manifest'); setEditManifestId(m.id); setGlobalTrackSearch(''); }}>{m.id}</h3>
+                    <h3 className="text-2xl font-black text-blue-600 underline cursor-pointer hover:text-blue-800" onClick={() => openRecordInNewWindow('new-manifest', m.id)}>{m.id}</h3>
                     <p className="text-sm text-teal-700 mt-1 font-medium">Date: {formatDate(m.date)}</p>
                   </div>
                   <div className="text-right">
@@ -730,7 +805,7 @@ const TrackCargoView = () => {
                 <div className="bg-purple-50 p-6 border-b border-purple-100 flex justify-between items-start">
                   <div>
                     <span className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-bold uppercase tracking-wider mb-2 inline-block">Commercial Invoice</span>
-                    <h3 className="text-2xl font-black text-purple-900 cursor-pointer hover:underline" onClick={() => { setActiveTab('new-commercial-invoice'); setEditCommercialInvoiceId(ci.id); setGlobalTrackSearch(''); }}>{ci.id}</h3>
+                    <h3 className="text-2xl font-black text-blue-600 underline cursor-pointer hover:text-blue-800" onClick={() => openRecordInNewWindow('new-commercial-invoice', ci.id)}>{ci.id}</h3>
                     <p className="text-sm text-purple-700 mt-1 font-medium">Date: {ci.invoiceDate}</p>
                   </div>
                   <div className="text-right">
@@ -749,7 +824,7 @@ const TrackCargoView = () => {
                       <div className="space-y-2">
                         {ci.manifestIds.map((mid, idx) => (
                            <div key={idx} className="flex justify-between items-center bg-purple-50 p-3 rounded-lg border border-purple-100">
-                              <span className="font-bold text-purple-900 cursor-pointer hover:underline" onClick={() => { setActiveTab('manifests'); setEditManifestId(mid); }}>{mid}</span>
+                              <span className="font-bold text-blue-600 underline cursor-pointer hover:text-blue-800" onClick={() => openRecordInNewWindow('new-manifest', mid)}>{mid}</span>
                            </div>
                         ))}
                       </div>
@@ -2078,7 +2153,7 @@ const PickupForm = () => {
       setFormData(prev => ({ ...prev, id: generatePickupNo() }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editPickupId]);
+  }, [editPickupId, pickups]);
 
   const handleFormChange = (e) => {
     let value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -2408,7 +2483,7 @@ const PickupForm = () => {
 };
 
 const PickupList = () => {
-  const { pickups, setPickups, checkAccess, setActiveTab, setEditPickupId, setEditReceiptId, setConvertPickupToReceiptData, setPrintingPickupNote, companies, showMessage } = React.useContext(AppContext);
+  const { pickups, setPickups, checkAccess, setActiveTab, setEditPickupId, setEditReceiptId, setConvertPickupToReceiptData, setPrintingPickupNote, companies, showMessage, openRecordInNewWindow } = React.useContext(AppContext);
   const [search, setSearch] = useState('');
   const [selectedPickups, setSelectedPickups] = useState([]);
 
@@ -2521,14 +2596,26 @@ const PickupList = () => {
                     <td className="p-4">
                       <input type="checkbox" checked={selectedPickups.includes(p.id)} onChange={(e) => handleSelect(p.id, e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500"/>
                     </td>
-                    <td className="p-4 font-medium text-indigo-600">{p.id}</td>
+                    <td className="p-4 font-medium text-indigo-600">
+                      <button 
+                      onClick={() => openRecordInNewWindow('new-pickup', p.id)}
+                      className="font-bold text-blue-600 underline hover:text-blue-800 text-left block"
+                    >
+                      {p.id}
+                    </button>
+                    </td>
                     <td className="p-4 text-slate-600">{formatDate(p.date)}</td>
                     <td className="p-4 font-medium text-slate-800">{p.customerName}</td>
                     <td className="p-4 text-slate-600">{p.consignorName}</td>
                     <td className="p-4 text-slate-600">{transporterName} <br/> <span className="text-xs text-slate-400">{p.truckDetails}</span></td>
                     <td className="p-4">
                       {p.status === 'Linked' || p.linkedSid ? (
-                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold inline-flex items-center gap-1"><Link className="w-3 h-3"/> {p.linkedSid}</span>
+                        <button 
+                          onClick={() => openRecordInNewWindow('new-receipt', p.linkedSid)}
+                          className="bg-green-100 text-blue-600 underline px-2 py-1 rounded text-xs font-bold inline-flex items-center gap-1 hover:bg-green-200 transition-colors"
+                        >
+                          <Link className="w-3 h-3"/> {p.linkedSid}
+                        </button>
                       ) : (
                         <span className={`px-2 py-1 rounded text-xs font-bold ${
                           p.status === 'PICKED_UP' ? 'bg-emerald-100 text-emerald-700' : 
@@ -2652,7 +2739,7 @@ const ReceiptForm = () => {
       setLines([{ id: Date.now().toString(), product: '', uom: 'Pallet', qty: 1, l: '', w: '', h: '', weight: '', cbm: 0 }]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editReceiptId, convertPickupToReceiptData]);
+  }, [editReceiptId, convertPickupToReceiptData, receipts]);
 
   const handleFormChange = (e) => {
     let value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -2995,7 +3082,7 @@ const ReceiptForm = () => {
 const ReceiptList = () => {
   const { 
     checkAccess, receipts, returns, manifests, breakbulks, setEditReceiptId, 
-    setActiveTab, setPrintingA4Receipt, setPrintingReceipt, setReceipts, showMessage 
+    setActiveTab, setPrintingA4Receipt, setPrintingReceipt, setReceipts, showMessage, openRecordInNewWindow 
   } = React.useContext(AppContext);
 
   if (!checkAccess('receipts', 'view')) return <div className="p-8 text-center text-slate-500">You do not have permission to view shipments.</div>;
@@ -3091,7 +3178,12 @@ const ReceiptList = () => {
                 return (
                   <tr key={r.id} className={`hover:bg-slate-50 ${r.isUrgent ? 'bg-red-50/30' : ''}`}>
                     <td className="p-4 text-sm font-medium text-blue-600">
-                      {r.id}
+                      <button 
+                        onClick={() => openRecordInNewWindow('new-receipt', r.id)}
+                        className="font-bold text-blue-600 underline hover:text-blue-800 text-left block"
+                      >
+                        {r.id}
+                      </button>
                       <div className="mt-1 flex items-center space-x-2">
                         {statusBadge}
                         {r.isUrgent && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Urgent</span>}
@@ -3318,7 +3410,7 @@ const ManifestForm = () => {
       ]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editManifestId]);
+  }, [editManifestId, manifests]);
 
   useEffect(() => {
     if (!editManifestId && route.type === 'FCL' && route.pol && route.pod) {
@@ -4116,7 +4208,7 @@ const ManifestList = () => {
   const { 
     checkAccess, manifests, setPrintingPackingList, setPrintingDeliveryOrders, 
     setEditManifestId, setActiveTab, setManifests, showMessage, haulierBookings,
-    containerBookings, containerTypes
+    containerBookings, containerTypes, openRecordInNewWindow
   } = React.useContext(AppContext);
 
   if (!checkAccess('manifests', 'view')) return <div className="p-8 text-center text-slate-500">You do not have permission to view manifests.</div>;
@@ -4192,7 +4284,12 @@ const ManifestList = () => {
                 <tr key={m.id} className="hover:bg-slate-50">
                   <td className="p-4 text-sm font-medium text-teal-600">
                     <div className="flex flex-col">
-                      <span>{m.id}</span>
+                      <button 
+                        onClick={() => openRecordInNewWindow('new-manifest', m.id)}
+                        className="font-bold text-blue-600 underline hover:text-blue-800 text-left"
+                      >
+                        {m.id}
+                      </button>
                       <span className="text-xs text-slate-500 font-normal">{formatDate(m.date)}</span>
                     </div>
                   </td>
@@ -4330,7 +4427,7 @@ const HaulierBookingForm = () => {
       setSelectingCbn(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editHaulierBookingId]);
+  }, [editHaulierBookingId, haulierBookings]);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
   
@@ -4728,7 +4825,7 @@ const ContainerBookingForm = () => {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editBookingId]);
+  }, [editBookingId, containerBookings]);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value.toUpperCase() });
   const handleDateChange = (e) => {
@@ -4903,7 +5000,7 @@ const ContainerBookingForm = () => {
 
 const ContainerBookingList = () => {
   const { 
-    containerBookings, containerTypes, setEditBookingId, setActiveTab, manifests, companies, setPrintingBookingForm
+    containerBookings, containerTypes, setEditBookingId, setActiveTab, manifests, companies, setPrintingBookingForm, openRecordInNewWindow
   } = React.useContext(AppContext);
 
   return (
@@ -4988,7 +5085,12 @@ const ContainerBookingList = () => {
               return (
                 <tr key={b.id} className="hover:bg-slate-50 transition-colors">
                   <td className="p-4">
-                    <p className="font-semibold text-sky-700">{b.id}</p>
+                    <button 
+                      onClick={() => openRecordInNewWindow('new-booking', b.id)}
+                      className="font-semibold text-blue-600 underline hover:text-blue-800"
+                    >
+                      {b.id}
+                    </button>
                     <p className="text-xs text-slate-500 mt-1">Jobs: <span className="font-medium text-slate-700">{b.containers && b.containers.length > 0 ? Array.from(new Set(b.containers.filter(c => c.jobNo).map(c => c.jobNo))).join(', ') || '-' : '-'}</span></p>
                   </td>
                   <td className="p-4">
@@ -5107,7 +5209,7 @@ const ReturnNoteForm = () => {
       setReceiptSearch('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editReturnId]);
+  }, [editReturnId, returns]);
 
   const filteredReceipts = useMemo(() => {
     if (editReturnId) return []; // Hide search while editing
@@ -5339,7 +5441,7 @@ const ReturnNoteForm = () => {
 const ReturnList = () => {
   const { 
     checkAccess, returns, setPrintingReturnNote, setEditReturnId, setActiveTab, 
-    setReturns, showMessage 
+    setReturns, showMessage, openRecordInNewWindow 
   } = React.useContext(AppContext);
 
   if (!checkAccess('returns', 'view')) return <div className="p-8 text-center text-slate-500">You do not have permission to view returns.</div>;
@@ -5368,9 +5470,23 @@ const ReturnList = () => {
             ) : (
               (returns || []).map(ret => (
                 <tr key={ret.id} className="hover:bg-slate-50">
-                  <td className="p-4 text-sm font-medium text-orange-600">{ret.id}</td>
+                  <td className="p-4 text-sm font-medium text-blue-600 font-bold underline">
+                    <button 
+                      onClick={() => openRecordInNewWindow('new-return', ret.id)}
+                      className="font-bold hover:text-blue-800 text-left block"
+                    >
+                      {ret.id}
+                    </button>
+                  </td>
                   <td className="p-4 text-sm text-slate-600">{formatDate(ret.date)}</td>
-                  <td className="p-4 text-sm font-medium text-slate-800">{ret.receiptId}</td>
+                  <td className="p-4 text-sm font-medium">
+                    <button 
+                      onClick={() => openRecordInNewWindow('new-receipt', ret.receiptId)}
+                      className="font-bold text-blue-600 underline hover:text-blue-800 text-left block"
+                    >
+                      {ret.receiptId}
+                    </button>
+                  </td>
                   <td className="p-4 text-sm text-slate-600">{ret.reason || '-'}</td>
                   <td className="p-4 text-sm font-bold text-slate-700 text-right">{ret.totalReturnQty}</td>
                   <td className="p-4 text-sm text-slate-600 text-right font-mono">{ret.totalReturnCBM.toFixed(3)}</td>
@@ -7008,6 +7124,7 @@ export default function App() {
   };
 
   const [activeTab, setActiveTab] = useState('dashboard');
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [appMessage, setAppMessage] = useState(null);
   
@@ -7082,6 +7199,39 @@ export default function App() {
   const [editPickupId, setEditPickupId] = useState(null);
   const [editBookingId, setEditBookingId] = useState(null);
   const [convertPickupToReceiptData, setConvertPickupToReceiptData] = useState(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    const editId = params.get('editId');
+    const search = params.get('search');
+    
+    if (tab) {
+      setActiveTab(tab);
+      if (editId) {
+        if (tab === 'new-booking') setEditBookingId(editId);
+        else if (tab === 'new-receipt') setEditReceiptId(editId);
+        else if (tab === 'new-manifest') setEditManifestId(editId);
+        else if (tab === 'new-pickup') setEditPickupId(editId);
+        else if (tab === 'new-commercial-invoice') setEditCommercialInvoiceId(editId);
+        else if (tab === 'new-return') setEditReturnId(editId);
+      }
+      if (search) {
+        setGlobalTrackSearch(search.toUpperCase());
+      }
+    }
+  }, [containerBookings, manifests, receipts, pickups, returns, commercialInvoices]); // Depend on data loads to ensure IDs exist if they are being validated in sub-components
+
+  const openRecordInNewWindow = (tab, editId = null) => {
+    let url = `${window.location.origin}${window.location.pathname}?tab=${tab}`;
+    if (editId) url += `&editId=${editId}`;
+    window.open(url, '_blank');
+  };
+  
+  const openSearchInNewWindow = (searchQuery) => {
+    const url = `${window.location.origin}${window.location.pathname}?tab=track&search=${encodeURIComponent(searchQuery)}`;
+    window.open(url, '_blank');
+  };
 
   useEffect(() => {
     // Stage 1: Essential data needed to support the Login screen and app boot
@@ -7388,7 +7538,8 @@ export default function App() {
     showMessage, closeMessage, checkAccess,
     handlePrintRequest, handleGeneratePDF, generateShipmentId, generateReturnNo,
     generateManifestNo, generateBreakbulkNo, generatePickupNo, generateBookingNo, generateLineHBL, generateCommercialInvoiceNo,
-    calculateCBM, getActiveInventory, formatDate, formatPrintDate, formatAddress
+    calculateCBM, getActiveInventory, formatDate, formatPrintDate, formatAddress,
+    openRecordInNewWindow, openSearchInNewWindow
   };
 
   return (
@@ -7636,7 +7787,13 @@ export default function App() {
                        value={globalTrackSearch}
                        onChange={(e) => setGlobalTrackSearch(e.target.value.toUpperCase())}
                        onKeyDown={(e) => {
-                         if (e.key === 'Enter') setActiveTab('track');
+                         if (e.key === 'Enter') {
+                           if (globalTrackSearch.trim()) {
+                             openSearchInNewWindow(globalTrackSearch);
+                           } else {
+                             setActiveTab('track');
+                           }
+                         }
                        }}
                      />
                    </div>

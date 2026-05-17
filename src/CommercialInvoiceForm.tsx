@@ -46,7 +46,7 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
       setSelectingManifests(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editCommercialInvoiceId]);
+  }, [editCommercialInvoiceId, commercialInvoices]);
 
   const usedManifestIds = new Set();
   (commercialInvoices || []).forEach(ci => {
