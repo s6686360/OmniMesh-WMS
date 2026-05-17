@@ -4,7 +4,7 @@
 
 @media print {
   @page { margin: 0; }
-  @page a4-page { margin: 15mm; size: a4 portrait; }
+  @page a4-page { margin: 0; size: a4 portrait; }
   @page a6-page { margin: 0; size: a6 portrait; }
 
   html, body, #root, .h-screen {
@@ -31,8 +31,6 @@
   }
   .a4-page { 
     page: a4-page !important; 
-    margin: 0 !important; 
-    padding: 0 !important;
     border: none !important; 
     box-shadow: none !important; 
     width: 210mm !important; 
