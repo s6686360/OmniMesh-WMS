@@ -5752,15 +5752,15 @@ const PrintLabelsOverlay = () => {
         <div><h3 className="font-bold text-lg text-slate-800">Print Thermal Labels (A6)</h3></div>
         <div className="flex space-x-3">
           <button onClick={() => setPrintingReceipt(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Cancel</button>
-          <button onClick={() => handleGeneratePDF('print-area', `${printingReceipt.id}-Labels.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('print-area', `${printingReceipt.id}-Labels.pdf`, 'a6', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">Print</button>
         </div>
       </div>
-      <div id="print-area" className="flex flex-col items-center space-y-8 w-full">
+      <div id="print-area" className="flex flex-col items-center space-y-8 print:space-y-0 w-full">
         {packagesToPrint.map((pkg, idx) => {
           const rText = printingReceipt.transactionType === 'LCL Consolidate' ? `${printingReceipt.pol}-${printingReceipt.pod}` : 'CROSS DOCK';
           return (
-            <div className="a6-label bg-white border-2 border-slate-300 p-6 flex flex-col" style={{ width: '105mm', height: '148mm' }} key={idx}>
+            <div className="a6-label bg-white border-2 border-slate-300 p-6 flex flex-col overflow-hidden" style={{ width: '105mm', height: '148mm', boxSizing: 'border-box' }} key={idx}>
               <div className="flex justify-between border-b-2 border-black pb-3 mb-3"><div><span className="font-black text-2xl">{printingReceipt.company}</span></div><div><span className="text-sm font-bold bg-black text-white px-2 py-1 rounded">{rText}</span></div></div>
               
               <div className="flex justify-between items-center mb-2">
@@ -5810,7 +5810,7 @@ const PrintA4Overlay = () => {
         <div><h3 className="font-bold text-lg text-slate-800">Print Goods Received Note</h3></div>
         <div className="flex space-x-3">
            <button onClick={() => setPrintingA4Receipt(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-           <button onClick={() => handleGeneratePDF('a4-print-area', `${printingA4Receipt.id}-GRN.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+           <button onClick={() => handleGeneratePDF('a4-print-area', `${printingA4Receipt.id}-GRN.pdf`, 'a4', 10)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
            <button onClick={handlePrintRequest} className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors">Print</button>
         </div>
       </div>
@@ -5896,7 +5896,7 @@ const PrintPackingListOverlay = () => {
         <div><h3 className="font-bold text-lg text-slate-800">Print Packing List</h3></div>
         <div className="flex space-x-3">
           <button onClick={() => setPrintingPackingList(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-PL.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-PL.pdf`, 'a4', 10)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">Print</button>
         </div>
       </div>
@@ -6086,7 +6086,7 @@ const PrintDeliveryOrdersOverlay = () => {
         <div><h3 className="font-bold text-lg text-slate-800">Print Delivery Orders</h3><p className="text-sm text-slate-500">Generated {groups.length} distinct D/O pages based on destinations.</p></div>
         <div className="flex space-x-3">
           <button onClick={() => setPrintingDeliveryOrders(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-DO.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-DO.pdf`, 'a4', 10)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors">Print All D/Os</button>
         </div>
       </div>
@@ -6188,7 +6188,7 @@ const PrintPickupNoteOverlay = () => {
         <div><h3 className="font-bold text-lg text-slate-800">Print Pickup Note</h3></div>
         <div className="flex space-x-3">
           <button onClick={() => setPrintingPickupNote(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `Pickup-Note.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `Pickup-Note.pdf`, 'a4', 10)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-indigo-800 text-white rounded hover:bg-indigo-900 transition-colors">Print Pickup Note</button>
         </div>
       </div>
@@ -6310,7 +6310,7 @@ const PrintBookingFormOverlay = () => {
         <div><h3 className="font-bold text-lg text-slate-800">Print Booking Form</h3></div>
         <div className="flex space-x-3">
           <button onClick={() => setPrintingBookingForm(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${b.id}-Booking.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${b.id}-Booking.pdf`, 'a4', 10)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">Print To Liner</button>
         </div>
       </div>
@@ -6391,7 +6391,7 @@ const PrintCommercialInvoiceOverlay = () => {
         </div>
         <div className="flex space-x-3">
           <button onClick={() => setPrintingCommercialInvoice(null)} className="px-4 py-2 border rounded font-medium text-slate-600 hover:bg-slate-50">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${printingCommercialInvoice.id}-CIPL.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors font-medium">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${printingCommercialInvoice.id}-CIPL.pdf`, 'a4', 10)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors font-medium">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-emerald-600 text-white rounded font-medium shadow-sm hover:bg-emerald-700 flex items-center">
             <Printer className="w-4 h-4 mr-2" /> Print CI/PL
           </button>
@@ -6564,7 +6564,7 @@ const PrintReturnNoteOverlay = () => {
         <div><h3 className="font-bold text-lg text-slate-800">Print Return Note</h3></div>
         <div className="flex space-x-3">
           <button onClick={() => setPrintingReturnNote(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${ret.id}-ReturnNote.pdf`)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${ret.id}-ReturnNote.pdf`, 'a4', 10)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors">Print Return Note</button>
         </div>
       </div>
@@ -7323,18 +7323,18 @@ export default function App() {
     }
   };
 
-  const handleGeneratePDF = (elementId, filename = 'document.pdf') => {
+  const handleGeneratePDF = (elementId, filename = 'document.pdf', format = 'a4', margin = 10) => {
     import('html2pdf.js').then((module) => {
       const html2pdf = (module.default ? module.default : module) as any;
       const element = document.getElementById(elementId);
       if (!element) return showMessage("Document content not found.", "error");
       
       const opt = {
-        margin:       [10, 10, 10, 10], // top, left, bottom, right in mm
+        margin:       margin,
         filename:     filename,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' }
+        jsPDF:        { unit: 'mm', format: format, orientation: 'portrait' }
       };
       
       html2pdf().set(opt).from(element).save();
