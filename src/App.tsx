@@ -1501,7 +1501,7 @@ const MasterMaintenance = () => {
                       <button type="button" onClick={() => { 
                           updateForm('password', 'ABCD@1234'); 
                           updateForm('isFirstLogin', true); 
-                          alert('Password has been reset to ABCD@1234. The user will be prompted to change it on their next login.');
+                          showMessage('Password has been reset to ABCD@1234. The user will be prompted to change it on their next login.', 'success');
                         }} className="bg-slate-200 px-4 py-2 text-sm text-slate-700 border border-slate-300 rounded-md hover:bg-slate-300 font-semibold">
                           Reset Password
                       </button>
@@ -2655,6 +2655,27 @@ const ActivityLogViewer = () => {
     return 0;
   });
 
+  const handleExportCsv = () => {
+    if (filteredLogs.length === 0) return;
+    const headers = ['Date/Time', 'User', 'Module', 'Action', 'Record ID', 'Details'];
+    const rows = filteredLogs.map((log: any) => [
+      `"${new Date(log.date).toLocaleString().replace(/"/g, '""')}"`,
+      `"${(log.username || '').replace(/"/g, '""')}"`,
+      `"${(log.module || '').replace(/"/g, '""')}"`,
+      `"${(log.action || '').replace(/"/g, '""')}"`,
+      `"${(log.recordId || '').replace(/"/g, '""')}"`,
+      `"${(log.details || '').replace(/"/g, '""')}"`
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Activity_Logs_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleNavigate = (log) => {
     if (!log.recordId) return;
     
@@ -2715,6 +2736,10 @@ const ActivityLogViewer = () => {
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
               <input type="text" placeholder="Search logs..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-1.5 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm" />
            </div>
+           <button onClick={handleExportCsv} className="flex items-center space-x-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+              <FileDown className="w-4 h-4" />
+              <span>Export CSV</span>
+           </button>
         </div>
       </div>
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -2794,6 +2819,8 @@ const SystemAdminModule = () => {
   const [wipeQ1, setWipeQ1] = useState('');
   const [wipeQ2, setWipeQ2] = useState('');
   const [isWiping, setIsWiping] = useState(false);
+  const [wipeProgress, setWipeProgress] = useState(0);
+  const [wipeStatus, setWipeStatus] = useState('');
 
   const handleWipeData = async () => {
     if (wipeQ1 !== '16091985' || wipeQ2 !== '22081964') {
@@ -2804,28 +2831,33 @@ const SystemAdminModule = () => {
       return;
     }
 
-    if (!window.confirm("FINAL WARNING: This is irreversible and will delete ALL DATA across the system (except users and roles). Are you absolutely sure?")) {
-      return;
-    }
-
     setIsWiping(true);
+    setWipeProgress(0);
+    setWipeStatus('Initializing wipe process...');
     try {
       const collectionsToWipe = [
         'receipts', 'returns', 'pickups', 'manifests', 'warehouses', 
         'containerTypes', 'fclTemplates', 'containerBookings', 'haulierBookings', 
         'commercialInvoices', 'breakbulks', 'activityLogs', 'notifications',
-        'companies', 'ports', 'tariffs'
+        'companies', 'ports', 'currencies', 'glCodes', 'services', 'csvExportTemplates',
+        'storageEntries', 'storageZones', 'storageRates', 'vendorBills',
+        'costRecoveries', 'masterTariffs', 'locations', 'miscChargeTypes'
       ];
 
       const { getDocs, collection, deleteDoc } = await import('firebase/firestore');
 
+      let completedCollections = 0;
       for (const colName of collectionsToWipe) {
+        setWipeStatus(`Wiping ${colName}...`);
         const querySnapshot = await getDocs(collection(db, colName));
         for (const docSnapshot of querySnapshot.docs) {
           await deleteDoc(docSnapshot.ref);
         }
+        completedCollections++;
+        setWipeProgress(Math.round((completedCollections / collectionsToWipe.length) * 100));
       }
 
+      setWipeStatus('Resetting system counters...');
       // Reset System Counters
       const { doc, setDoc } = await import('firebase/firestore');
       await setDoc(doc(db, 'system', 'counters'), {
@@ -2840,6 +2872,7 @@ const SystemAdminModule = () => {
         haulierCounter: 1
       });
 
+      setWipeProgress(100);
       showMessage('System data wiped and counters reset successfully.', 'success');
       setShowWipeModal(false);
       setWipeQ1('');
@@ -2849,6 +2882,8 @@ const SystemAdminModule = () => {
       showMessage('Failed to wipe data: ' + e.message, 'error');
     }
     setIsWiping(false);
+    setWipeProgress(0);
+    setWipeStatus('');
   };
 
   const handleReset = (type, setCounter, dataList) => {
@@ -3016,6 +3051,18 @@ const SystemAdminModule = () => {
                 />
               </div>
             </div>
+
+            {isWiping && (
+              <div className="mt-6 mb-2">
+                <div className="flex justify-between text-xs font-semibold text-slate-500 uppercase mb-2 tracking-wide">
+                  <span>{wipeStatus}</span>
+                  <span>{wipeProgress}%</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-slate-200">
+                  <div className="bg-red-500 h-3 rounded-full transition-all duration-300 ease-out" style={{ width: `${wipeProgress}%` }}></div>
+                </div>
+              </div>
+            )}
 
             <div className="mt-8 pt-4 border-t border-slate-200 flex justify-end space-x-3">
               <button 
@@ -8392,7 +8439,7 @@ export default function App() {
         // 10 minutes = 600,000 ms
         timeoutId = setTimeout(() => {
           handleAuthLogout();
-          alert('You have been logged out due to inactivity.');
+          showMessage('You have been logged out due to inactivity.', 'error');
         }, 600000);
       }
     };
