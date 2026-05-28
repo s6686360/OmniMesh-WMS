@@ -23,10 +23,10 @@ export const ThemePicker = () => {
     <div className="relative">
       <button 
         onClick={() => setOpen(!open)}
-        className="flex items-center space-x-1 text-sm text-slate-600 hover:text-indigo-600 transition-colors bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full border border-slate-200"
+        className="flex items-center space-x-1 text-sm text-slate-600 hover:text-indigo-600 transition-colors bg-slate-100 hover:bg-slate-200 px-2 md:px-3 py-1.5 rounded-full border border-slate-200"
       >
-        <Palette className="w-4 h-4" />
-        <span>Theme</span>
+        <Palette className="w-4 h-4 md:mr-1" />
+        <span className="hidden md:inline">Theme</span>
       </button>
 
       {open && (
