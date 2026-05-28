@@ -8420,8 +8420,8 @@ const LoginScreen = () => {
           <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <Boxes className="w-8 h-8 text-blue-600" />
           </div>
-          <h1 className="text-2xl font-black text-slate-800">OmniMesh WMS</h1>
-          <p className="text-slate-500 mt-1">Warehouse Management System v1.02</p>
+          <h1 className="text-2xl font-black text-slate-800">OmniMesh miniERP</h1>
+          <p className="text-slate-500 mt-1">miniERP V2.01</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
@@ -9222,8 +9222,8 @@ export default function App() {
               {!isSidebarCollapsed ? (
                 <>
                   <div className="flex flex-col">
-                    <h1 className="text-2xl font-black text-white tracking-tight flex items-center space-x-2"><Boxes className="w-8 h-8 text-blue-500 min-w-[32px]" /><span>OmniMesh WMS</span></h1>
-                    <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider">v1.02</p>
+                    <h1 className="text-2xl font-black text-white tracking-tight flex items-center space-x-2"><Boxes className="w-8 h-8 text-blue-500 min-w-[32px]" /><span>OmniMesh miniERP</span></h1>
+                    <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider">V2.01</p>
                   </div>
                 </>
               ) : (
