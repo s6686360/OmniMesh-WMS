@@ -45,6 +45,7 @@ service cloud.firestore {
     match /glCodes/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /services/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /csvExportTemplates/{id} { allow read: if true; allow write: if isSignedIn(); }
+    match /letterheads/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /companies/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /ports/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /warehouses/{id} { allow read: if true; allow write: if isSignedIn(); }

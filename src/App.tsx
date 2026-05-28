@@ -892,7 +892,7 @@ const TrackCargoView = () => {
 const MasterMaintenance = () => {
   const { 
     checkAccess, companies, setCompanies, ports, setPorts, roles, setRoles, currencies, setCurrencies,
-    glCodes, setGlCodes, services, setServices, csvExportTemplates, setCsvExportTemplates,
+    glCodes, setGlCodes, services, setServices, csvExportTemplates, setCsvExportTemplates, letterheads, setLetterheads,
     users, setUsers, warehouses, setWarehouses, containerTypes, setContainerTypes, showMessage, receipts, setReceipts, manifests, setManifests, fclTemplates, setFclTemplates, logActivity,
     storageZones, setStorageZones, storageRates, setStorageRates,
     masterTariffs, setMasterTariffs, locations, setLocations, miscChargeTypes, setMiscChargeTypes
@@ -951,7 +951,8 @@ const MasterMaintenance = () => {
       items: [
         { id: 'users', name: 'System Users' }, 
         { id: 'roles', name: 'Roles' },
-        { id: 'csvExportTemplates', name: 'Export Templates' }
+        { id: 'csvExportTemplates', name: 'Export Templates' },
+        { id: 'letterheads', name: 'Letterheads' }
       ]
     }
   ];
@@ -977,6 +978,7 @@ const MasterMaintenance = () => {
       case 'glCodes': return { data: glCodes, setter: setGlCodes, label: 'GL Code', isGlCode: true };
       case 'services': return { data: services, setter: setServices, label: 'Service / Charge Type', isService: true };
       case 'csvExportTemplates': return { data: csvExportTemplates, setter: setCsvExportTemplates, label: 'CSV Export Template', isCsvExportTemplate: true };
+      case 'letterheads': return { data: letterheads, setter: setLetterheads, label: 'Letterhead' };
       case 'fclTemplates': return { data: fclTemplates, setter: setFclTemplates, label: 'FCL Cost Template', isFclTemplate: true };
       case 'storageZones': return { data: storageZones, setter: setStorageZones, label: 'Storage Zone', isStorageZone: true };
       case 'storageRates': return { data: storageRates, setter: setStorageRates, label: 'Storage Rate', isStorageRate: true };
@@ -1057,7 +1059,7 @@ const MasterMaintenance = () => {
   };
 
   const saveForm = async () => {
-    if (activeMaster === 'companies' || activeMaster === 'ports' || activeMaster === 'roles' || activeMaster === 'currencies' || activeMaster === 'glCodes' || activeMaster === 'services' || activeMaster === 'csvExportTemplates') {
+    if (activeMaster === 'companies' || activeMaster === 'ports' || activeMaster === 'roles' || activeMaster === 'currencies' || activeMaster === 'glCodes' || activeMaster === 'services' || activeMaster === 'csvExportTemplates' || activeMaster === 'letterheads') {
       if (!formData.name || !formData.name.trim()) return showMessage("Name is required.");
     }
     if (activeMaster === 'csvExportTemplates') {
@@ -1212,7 +1214,7 @@ const MasterMaintenance = () => {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
-            {(activeMaster === 'companies' || activeMaster === 'roles' || activeMaster === 'warehouses') && (
+            {(activeMaster === 'companies' || activeMaster === 'roles' || activeMaster === 'warehouses' || activeMaster === 'letterheads') && (
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 mb-1">{label} Name <span className="text-red-500">*</span></label>
                 <input type="text" value={formData.name || ''} onChange={(e) => updateForm('name', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" />
@@ -1374,7 +1376,7 @@ const MasterMaintenance = () => {
                             users.filter((u: any) => u.companyId === formData.id).map((u: any) => (
                               <tr key={u.id} className="bg-white">
                                 <td className="p-2 font-medium">{u.username}</td>
-                                <td className="p-2">{(roles.find((r: any) => r.id === u.roleId) as any)?.name || u.roleId}</td>
+                                <td className="p-2">{u.roleId === 'role-superadmin' ? 'System Default SuperAdmin' : (roles.find((r: any) => r.id === u.roleId) as any)?.name || u.roleId}</td>
                               </tr>
                             ))
                           )}
@@ -1517,6 +1519,7 @@ const MasterMaintenance = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">Assign Role <span className="text-red-500">*</span></label>
                   <select value={formData.roleId || ''} onChange={(e) => updateForm('roleId', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md">
                     <option value="">-- Select Role --</option>
+                    <option value="role-superadmin" className="font-bold text-indigo-700">System Default SuperAdmin</option>
                     {(roles || []).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                   </select>
                 </div>
@@ -2147,7 +2150,7 @@ const MasterMaintenance = () => {
                     <label className="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked={formData.isLinerBroker} onChange={(e) => updateForm('isLinerBroker', e.target.checked)} className="rounded text-indigo-600 w-4 h-4"/><span className="text-sm font-semibold text-slate-600">Is Liner/Broker</span></label>
                   </div>
                 </div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Company Email</label><input type="email" value={formData.companyEmail || ''} onChange={(e) => updateForm('companyEmail', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
+                <div><label className="block text-sm font-medium text-slate-700 mb-1">Company Email</label><input type="email" value={formData.companyEmail || ''} onChange={(e) => updateForm('companyEmail', e.target.value.toLowerCase())} className="w-full p-2 border border-slate-300 rounded-md" /></div>
                 <div><label className="block text-sm font-medium text-slate-700 mb-1">Contact Number</label><input type="text" value={formData.contactNumber || ''} onChange={(e) => updateForm('contactNumber', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
                 <div><label className="block text-sm font-medium text-slate-700 mb-1">ROC Number</label><input type="text" value={formData.roc || ''} onChange={(e) => updateForm('roc', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
                 <div><label className="block text-sm font-medium text-slate-700 mb-1">TIN (for e-invoice)</label><input type="text" value={formData.tin || ''} onChange={(e) => updateForm('tin', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
@@ -2177,6 +2180,95 @@ const MasterMaintenance = () => {
               </>
             )}
           </div>
+
+          {activeMaster === 'letterheads' && (
+            <div className="md:col-span-2 grid grid-cols-1 gap-4 mt-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Company Reg No (ROC)</label>
+                  <input type="text" value={formData.companyRegNo || ''} onChange={(e) => updateForm('companyRegNo', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">SST Number</label>
+                  <input type="text" value={formData.sstNo || ''} onChange={(e) => updateForm('sstNo', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700">Address Line 1</label>
+                  <input type="text" placeholder="Address Line 1" value={formData.addressLine1 || ''} onChange={(e) => updateForm('addressLine1', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" />
+                </div>
+                <div className="md:col-span-2 grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700">Address Line 2</label>
+                    <input type="text" placeholder="Address Line 2" value={formData.addressLine2 || ''} onChange={(e) => updateForm('addressLine2', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700">Address Line 3</label>
+                    <input type="text" placeholder="Address Line 3 (optional)" value={formData.addressLine3 || ''} onChange={(e) => updateForm('addressLine3', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" />
+                  </div>
+                </div>
+                <div className="md:col-span-2 grid grid-cols-4 gap-2">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Postal Code</label>
+                    <input type="text" value={formData.postalCode || ''} onChange={(e) => updateForm('postalCode', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
+                    <input type="text" value={formData.city || ''} onChange={(e) => updateForm('city', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">State</label>
+                    <input type="text" value={formData.state || ''} onChange={(e) => updateForm('state', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Country</label>
+                    <input type="text" value={formData.country || ''} onChange={(e) => updateForm('country', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Contact Number</label>
+                  <input type="text" value={formData.contactNumber || ''} onChange={(e) => updateForm('contactNumber', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                  <input type="text" value={formData.email || ''} onChange={(e) => updateForm('email', e.target.value.toLowerCase())} className="w-full p-2 border border-slate-300 rounded-md" />
+                </div>
+              </div>
+              
+              <div className="mt-4 border-t border-slate-200 pt-4">
+                <label className="block text-sm font-medium text-slate-700 mb-3">Apply Letterhead to Documents</label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                   {[
+                     { id: 'GRN', label: 'Goods Received Note' },
+                     { id: 'ReturnNote', label: 'Return Note' },
+                     { id: 'PackingList', label: 'Packing List' },
+                     { id: 'DeliveryOrders', label: 'Delivery Orders' },
+                     { id: 'PickupNote', label: 'Pickup Note' },
+                     { id: 'BookingForm', label: 'Booking Form' },
+                     { id: 'CIPL', label: 'Commercial Invoice' },
+                   ].map(doc => (
+                     <label key={doc.id} className="flex items-center space-x-2">
+                       <input 
+                         type="checkbox" 
+                         checked={(formData.assignedDocs || []).includes(doc.id)} 
+                         onChange={(e) => {
+                           const currentDocs = formData.assignedDocs || [];
+                           if (e.target.checked) {
+                             updateForm('assignedDocs', [...currentDocs, doc.id]);
+                           } else {
+                             updateForm('assignedDocs', currentDocs.filter((id: string) => id !== doc.id));
+                           }
+                         }}
+                         className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                       />
+                       <span className="text-sm font-medium text-slate-600">{doc.label}</span>
+                     </label>
+                   ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {activeMaster === 'companies' && (
             <div className="border-t pt-4">
@@ -2215,7 +2307,7 @@ const MasterMaintenance = () => {
                       </div>
                       <div><input type="text" placeholder="PIC Name" value={da.picName || ''} onChange={(e) => updateListRow('deliveryAddresses', idx, 'picName', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded-md" /></div>
                       <div><input type="text" placeholder="Contact Number" value={da.contactNumber || ''} onChange={(e) => updateListRow('deliveryAddresses', idx, 'contactNumber', e.target.value)} disabled={da.isMainAddress} className="w-full p-1.5 text-sm border border-slate-300 rounded-md disabled:bg-slate-100" /></div>
-                      <div className="md:col-span-2"><input type="email" placeholder="Email Address" value={da.email || ''} onChange={(e) => updateListRow('deliveryAddresses', idx, 'email', e.target.value)} disabled={da.isMainAddress} className="w-full p-1.5 text-sm border border-slate-300 rounded-md disabled:bg-slate-100" /></div>
+                      <div className="md:col-span-2"><input type="email" placeholder="Email Address" value={da.email || ''} onChange={(e) => updateListRow('deliveryAddresses', idx, 'email', e.target.value.toLowerCase())} disabled={da.isMainAddress} className="w-full p-1.5 text-sm border border-slate-300 rounded-md disabled:bg-slate-100" /></div>
                     </div>
                   </div>
                 ))}
@@ -2257,7 +2349,7 @@ const MasterMaintenance = () => {
                       </div>
                       <div><input type="text" placeholder="PIC Name" value={da.picName || ''} onChange={(e) => updateListRow('pickupAddresses', idx, 'picName', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded-md" /></div>
                       <div><input type="text" placeholder="Contact Number" value={da.contactNumber || ''} onChange={(e) => updateListRow('pickupAddresses', idx, 'contactNumber', e.target.value)} disabled={da.isMainAddress} className="w-full p-1.5 text-sm border border-slate-300 rounded-md disabled:bg-slate-100" /></div>
-                      <div className="md:col-span-2"><input type="email" placeholder="Email Address" value={da.email || ''} onChange={(e) => updateListRow('pickupAddresses', idx, 'email', e.target.value)} disabled={da.isMainAddress} className="w-full p-1.5 text-sm border border-slate-300 rounded-md disabled:bg-slate-100" /></div>
+                      <div className="md:col-span-2"><input type="email" placeholder="Email Address" value={da.email || ''} onChange={(e) => updateListRow('pickupAddresses', idx, 'email', e.target.value.toLowerCase())} disabled={da.isMainAddress} className="w-full p-1.5 text-sm border border-slate-300 rounded-md disabled:bg-slate-100" /></div>
                     </div>
                   </div>
                 ))}
@@ -2292,7 +2384,7 @@ const MasterMaintenance = () => {
                       <div className="md:col-span-2 pt-2 border-t border-slate-200 mt-2"><p className="text-xs font-semibold text-slate-500 mb-2">Location Contact details</p></div>
                       <div><input type="text" placeholder="PIC Name" value={da.picName || ''} onChange={(e) => updateListRow('warehouseAddresses', idx, 'picName', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded-md" /></div>
                       <div><input type="text" placeholder="Contact Number" value={da.contactNumber || ''} onChange={(e) => updateListRow('warehouseAddresses', idx, 'contactNumber', e.target.value)} disabled={da.isMainAddress} className="w-full p-1.5 text-sm border border-slate-300 rounded-md disabled:bg-slate-100" /></div>
-                      <div className="md:col-span-2"><input type="email" placeholder="Email Address" value={da.email || ''} onChange={(e) => updateListRow('warehouseAddresses', idx, 'email', e.target.value)} disabled={da.isMainAddress} className="w-full p-1.5 text-sm border border-slate-300 rounded-md disabled:bg-slate-100" /></div>
+                      <div className="md:col-span-2"><input type="email" placeholder="Email Address" value={da.email || ''} onChange={(e) => updateListRow('warehouseAddresses', idx, 'email', e.target.value.toLowerCase())} disabled={da.isMainAddress} className="w-full p-1.5 text-sm border border-slate-300 rounded-md disabled:bg-slate-100" /></div>
                     </div>
                   </div>
                 ))}
@@ -2312,7 +2404,7 @@ const MasterMaintenance = () => {
                   <div key={idx} className="flex space-x-2 bg-slate-50 p-2 rounded-md">
                     <input type="text" placeholder="Name" value={cp.name || ''} onChange={(e) => updateListRow('contactPersons', idx, 'name', e.target.value)} className="w-1/3 p-1.5 text-sm border border-slate-300 rounded-md" />
                     <input type="text" placeholder="Phone" value={cp.phone || ''} onChange={(e) => updateListRow('contactPersons', idx, 'phone', e.target.value)} className="w-1/3 p-1.5 text-sm border border-slate-300 rounded-md" />
-                    <input type="email" placeholder="Email" value={cp.email || ''} onChange={(e) => updateListRow('contactPersons', idx, 'email', e.target.value)} className="w-1/3 p-1.5 text-sm border border-slate-300 rounded-md" />
+                    <input type="email" placeholder="Email" value={cp.email || ''} onChange={(e) => updateListRow('contactPersons', idx, 'email', e.target.value.toLowerCase())} className="w-1/3 p-1.5 text-sm border border-slate-300 rounded-md" />
                     <button onClick={() => removeListRow('contactPersons', idx)} className="text-red-400 p-1.5"><Trash2 className="w-4 h-4"/></button>
                   </div>
                 ))}
@@ -2374,6 +2466,7 @@ const MasterMaintenance = () => {
               {activeMaster === 'glCodes' && <th className="p-3 text-sm font-semibold">Account Name / Type</th>}
               {activeMaster === 'services' && <th className="p-3 text-sm font-semibold">Name / GL Code Mapping</th>}
               {activeMaster === 'csvExportTemplates' && <th className="p-3 text-sm font-semibold">Integration Type / Columns</th>}
+              {activeMaster === 'letterheads' && <th className="p-3 text-sm font-semibold">Company Info</th>}
               {activeMaster === 'ports' && <th className="p-3 text-sm font-semibold">Details</th>}
               {activeMaster === 'fclTemplates' && <th className="p-3 text-sm font-semibold">POL / POD</th>}
               {activeMaster === 'users' && <th className="p-3 text-sm font-semibold">Assigned Role</th>}
@@ -2453,6 +2546,12 @@ const MasterMaintenance = () => {
                     <span className="ml-2 text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{item.columns?.length || 0} columns</span>
                   </td>
                 )}
+                {activeMaster === 'letterheads' && (
+                  <td className="p-3 text-sm text-slate-600">
+                    <span className="font-semibold block">{item.name || '-'}</span>
+                    <span className="text-xs text-slate-500">ROC: {item.companyRegNo || '-'} | SST: {item.sstNo || '-'}</span>
+                  </td>
+                )}
                 {activeMaster === 'fclTemplates' && (
                   <td className="p-3 text-sm text-slate-600">
                     <span className="font-semibold">{item.pol || '-'}</span> <span className="text-slate-400">to</span> <span className="font-semibold">{item.pod || '-'}</span>
@@ -2460,7 +2559,7 @@ const MasterMaintenance = () => {
                 )}
                 {activeMaster === 'users' && (
                   <td className="p-3 text-sm text-slate-600">
-                    {(roles || []).find(r => r?.id === item.roleId)?.name || <span className="text-red-500">Invalid Role</span>}
+                    {item.roleId === 'role-superadmin' ? 'System Default SuperAdmin' : ((roles || []).find(r => r?.id === item.roleId)?.name || <span className="text-red-500">Invalid Role</span>)}
                     {item.id === 'user-superadmin' && <span className="ml-2 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-bold">System Default</span>}
                   </td>
                 )}
@@ -6835,15 +6934,64 @@ const PrintLabelsOverlay = () => {
   );
 };
 
+const LetterheadHeader = ({ title = '', subtitle = '', rightNode = null, docType = null }) => {
+  const { letterheads } = React.useContext(AppContext);
+  const lh = (letterheads || []).find(l => (l.assignedDocs || []).includes(docType));
+
+  if (!lh) {
+    return (
+      <div className="border-b-2 border-slate-800 pb-6 mb-6 flex justify-between items-end">
+        <div>
+          <h1 className="text-4xl font-black">{title || 'COMPANY NAME NAME'}</h1>
+          <p className="text-sm font-bold uppercase mt-1">{subtitle}</p>
+        </div>
+        <div className="text-right">{rightNode}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-b-2 border-slate-800 pb-6 mb-6">
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h1 className="text-3xl font-black text-slate-800">{lh.name || 'Company Name'}</h1>
+          <div className="text-xs text-slate-600 mt-1 space-y-0.5">
+            {lh.companyRegNo && <span>ROC: {lh.companyRegNo}</span>}
+            {lh.companyRegNo && lh.sstNo && <span className="mx-2">|</span>}
+            {lh.sstNo && <span>SST: {lh.sstNo}</span>}
+          </div>
+          <div className="text-xs text-slate-600 mt-2 max-w-sm space-y-0.5">
+            {lh.addressLine1 && <p>{lh.addressLine1}</p>}
+            {lh.addressLine2 && <p>{lh.addressLine2}</p>}
+            {lh.addressLine3 && <p>{lh.addressLine3}</p>}
+            <p className="mt-1">
+              {[lh.postalCode, lh.city, lh.state, lh.country].filter(Boolean).join(', ')}
+            </p>
+          </div>
+          {(lh.contactNumber || lh.email) && (
+             <div className="text-xs text-slate-600 mt-2 flex gap-4">
+               {lh.contactNumber && <div><span className="font-semibold">Tel:</span> {lh.contactNumber}</div>}
+               {lh.email && <div><span className="font-semibold">Email:</span> {lh.email}</div>}
+             </div>
+          )}
+        </div>
+        <div className="text-right pt-2">{rightNode}</div>
+      </div>
+      <div><p className="text-lg font-bold uppercase text-slate-800 text-center">{subtitle}</p></div>
+    </div>
+  );
+};
+
 const PrintA4Overlay = () => {
   const { printingA4Receipt, setPrintingA4Receipt, handlePrintRequest, handleGeneratePDF, currentUser } = React.useContext(AppContext);
+
   if (!printingA4Receipt) return null;
   return (
     <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
       
       <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
         <div><h3 className="font-bold text-lg text-slate-800">Print Goods Received Note</h3></div>
-        <div className="flex space-x-3">
+        <div className="flex items-center space-x-3">
            <button onClick={() => setPrintingA4Receipt(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
            <button onClick={() => handleGeneratePDF('a4-print-area', `${printingA4Receipt.id}-GRN.pdf`, 'a4', 10)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
            <button onClick={handlePrintRequest} className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors">Print</button>
@@ -6851,10 +6999,12 @@ const PrintA4Overlay = () => {
       </div>
       <div id="a4-print-area" className="flex flex-col items-center w-full pb-20">
         <div className="a4-page bg-white shadow-2xl border border-slate-200" style={{ width: '210mm', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box' }}>
-          <div className="border-b-2 border-slate-800 pb-6 mb-6 flex justify-between items-end">
-            <div><h1 className="text-4xl font-black">{printingA4Receipt.company}</h1><p className="text-sm font-bold uppercase mt-1">Goods Received Note</p></div>
-            <div className="text-right"><p className="text-sm uppercase font-semibold">GRN ID</p><p className="text-2xl font-bold font-mono">{printingA4Receipt.id}</p></div>
-          </div>
+          <LetterheadHeader 
+            docType="GRN" 
+            title={printingA4Receipt.company} 
+            subtitle="Goods Received Note" 
+            rightNode={<><p className="text-sm uppercase font-semibold">GRN ID</p><p className="text-2xl font-bold font-mono">{printingA4Receipt.id}</p></>} 
+          />
           <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
             <div>
               <p className="text-xs uppercase font-bold border-b pb-1 mb-2">Customer Info</p><p className="font-bold text-lg">{printingA4Receipt.customer}</p>
@@ -6921,6 +7071,7 @@ const PrintA4Overlay = () => {
 
 const PrintPackingListOverlay = () => {
   const { printingPackingList, setPrintingPackingList, handlePrintRequest, handleGeneratePDF, companies, pickups, receipts } = React.useContext(AppContext);
+
   if (!printingPackingList) return null;
   const m = printingPackingList;
 
@@ -6929,7 +7080,7 @@ const PrintPackingListOverlay = () => {
       
       <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
         <div><h3 className="font-bold text-lg text-slate-800">Print Packing List</h3></div>
-        <div className="flex space-x-3">
+        <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingPackingList(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
           <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-PL.pdf`, 'a4', 10)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">Print</button>
@@ -6937,7 +7088,11 @@ const PrintPackingListOverlay = () => {
       </div>
       <div id="a4-print-area" className="flex flex-col items-center w-full pb-20">
         <div className="a4-page bg-white shadow-2xl border border-slate-200" style={{ width: '210mm', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box' }}>
-          <h1 className="text-3xl font-black text-center mb-6 uppercase tracking-wider">Container Packing List</h1>
+          <LetterheadHeader 
+            docType="PackingList" 
+            subtitle="Container Packing List"
+            rightNode={<><p className="text-sm uppercase font-semibold">Manifest No</p><p className="text-xl font-bold font-mono">{m.id}</p></>}
+          />
           
           <div className="grid grid-cols-2 gap-4 mb-6 border border-slate-800 p-4 font-mono text-sm">
             <div>
@@ -7036,6 +7191,7 @@ const PrintPackingListOverlay = () => {
 
 const PrintDeliveryOrdersOverlay = () => {
   const { printingDeliveryOrders, setPrintingDeliveryOrders, handlePrintRequest, handleGeneratePDF, receipts, companies } = React.useContext(AppContext);
+
   if (!printingDeliveryOrders) return null;
   const m = printingDeliveryOrders;
 
@@ -7119,7 +7275,7 @@ const PrintDeliveryOrdersOverlay = () => {
       
       <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
         <div><h3 className="font-bold text-lg text-slate-800">Print Delivery Orders</h3><p className="text-sm text-slate-500">Generated {groups.length} distinct D/O pages based on destinations.</p></div>
-        <div className="flex space-x-3">
+        <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingDeliveryOrders(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
           <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-DO.pdf`, 'a4', 10)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors">Print All D/Os</button>
@@ -7132,7 +7288,10 @@ const PrintDeliveryOrdersOverlay = () => {
 
           return (
             <div key={gIdx} className="a4-page bg-white shadow-2xl border border-slate-200 relative flex flex-col" style={{ width: '210mm', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box' }}>
-              <h1 className="text-3xl font-black border-b-2 border-black pb-2 mb-6 text-center">DELIVERY ORDER</h1>
+              <LetterheadHeader 
+                docType="DeliveryOrders" 
+                subtitle="DELIVERY ORDER"
+              />
               
               <div className="grid grid-cols-2 gap-8 mb-6 text-sm">
                 <div className="border p-3 border-slate-300 rounded">
@@ -7213,6 +7372,7 @@ const PrintDeliveryOrdersOverlay = () => {
 
 const PrintPickupNoteOverlay = () => {
   const { printingPickupNote, setPrintingPickupNote, handlePrintRequest, handleGeneratePDF, companies, currentUser, formatDate } = React.useContext(AppContext);
+
   if (!printingPickupNote) return null;
   const pickupsToPrint = Array.isArray(printingPickupNote) ? printingPickupNote : [printingPickupNote];
 
@@ -7221,7 +7381,7 @@ const PrintPickupNoteOverlay = () => {
       
       <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
         <div><h3 className="font-bold text-lg text-slate-800">Print Pickup Note</h3></div>
-        <div className="flex space-x-3">
+        <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingPickupNote(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
           <button onClick={() => handleGeneratePDF('a4-print-area', `Pickup-Note.pdf`, 'a4', 10)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-indigo-800 text-white rounded hover:bg-indigo-900 transition-colors">Print Pickup Note</button>
@@ -7233,13 +7393,16 @@ const PrintPickupNoteOverlay = () => {
           return (
             <div key={p.id || pIndex} className="a4-page bg-white shadow-2xl border border-slate-200 relative flex flex-col" style={{ width: '210mm', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box' }}>
               
-              <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-6">
-                <h1 className="text-3xl font-black text-slate-800">PICKUP NOTE</h1>
-                <div className="text-right">
-                  <p className="font-mono text-lg font-bold text-indigo-700">{p.id}</p>
-                  <p className="font-mono text-sm font-semibold">{formatDate(p.date)}</p>
-                </div>
-              </div>
+              <LetterheadHeader 
+                docType="PickupNote" 
+                subtitle="PICKUP NOTE"
+                rightNode={
+                  <div className="text-right">
+                    <p className="font-mono text-lg font-bold text-indigo-700">{p.id}</p>
+                    <p className="font-mono text-sm font-semibold">{formatDate(p.date)}</p>
+                  </div>
+                }
+              />
 
               <div className="grid grid-cols-2 gap-6 mb-6 text-sm">
                 <div className="border p-3 border-slate-300 rounded">
@@ -7732,6 +7895,7 @@ const StorageServiceView = () => {
 
 const PrintBookingFormOverlay = () => {
   const { printingBookingForm, setPrintingBookingForm, handlePrintRequest, handleGeneratePDF, formatDate } = React.useContext(AppContext);
+
   if (!printingBookingForm) return null;
   const b = printingBookingForm;
   
@@ -7746,7 +7910,7 @@ const PrintBookingFormOverlay = () => {
       
       <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
         <div><h3 className="font-bold text-lg text-slate-800">Print Booking Form</h3></div>
-        <div className="flex space-x-3">
+        <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingBookingForm(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
           <button onClick={() => handleGeneratePDF('a4-print-area', `${b.id}-Booking.pdf`, 'a4', 10)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">Print To Liner</button>
@@ -7754,7 +7918,11 @@ const PrintBookingFormOverlay = () => {
       </div>
       <div id="a4-print-area" className="flex flex-col items-center w-full pb-20">
         <div className="a4-page bg-white shadow-2xl border border-slate-200 relative flex flex-col p-10 box-border" style={{ width: '210mm', minHeight: '297mm' }}>
-          <h1 className="text-3xl font-black text-center mb-10 uppercase tracking-wider border-b-2 border-black pb-4">Container Booking Request</h1>
+          <LetterheadHeader 
+            docType="BookingForm" 
+            subtitle="Container Booking Request"
+            rightNode={<><p className="text-sm uppercase font-semibold">Booking Ref</p><p className="text-2xl font-bold font-mono">{b.id}</p></>}
+          />
           
           <div className="space-y-6 text-lg">
              <div className="flex justify-between border-b pb-2"><span className="font-bold text-slate-600">Booking Ref (CBN)</span> <span className="font-semibold text-xl">{b.id}</span></div>
@@ -7827,7 +7995,7 @@ const PrintCommercialInvoiceOverlay = () => {
            <h3 className="font-bold text-lg text-slate-800">Print Commercial Invoice / Packing List</h3>
            <p className="text-slate-500 text-sm">Review document before printing.</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingCommercialInvoice(null)} className="px-4 py-2 border rounded font-medium text-slate-600 hover:bg-slate-50">Close</button>
           <button onClick={() => handleGeneratePDF('a4-print-area', `${printingCommercialInvoice.id}-CIPL.pdf`, 'a4', 10)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors font-medium">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-emerald-600 text-white rounded font-medium shadow-sm hover:bg-emerald-700 flex items-center">
@@ -7839,32 +8007,21 @@ const PrintCommercialInvoiceOverlay = () => {
       <div id="a4-print-area" className="flex flex-col items-center w-full pb-20">
         <div className="a4-page bg-white shadow-2xl border border-slate-200 relative flex flex-col w-[210mm] min-h-[297mm] p-[15mm] box-border mb-8">
           
-          <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b-2 border-slate-800">
-             <div>
-                <h1 className="text-2xl font-black text-slate-900 uppercase tracking-wider">{declCompany.name}</h1>
-                <div className="text-xs text-slate-600 mt-2 space-y-0.5 whitespace-pre-wrap">
-                  {formatAddress({ 
-                    line1: declCompany.addressLine1, 
-                    line2: declCompany.addressLine2,
-                    line3: declCompany.addressLine3,
-                    postalCode: declCompany.postalCode,
-                    city: declCompany.city,
-                    state: declCompany.state,
-                    country: declCompany.country
-                  })}
-                  {declCompany.contactNumber && <div>Tel: {declCompany.contactNumber}</div>}
-                  {declCompany.roc && <div>ROC/Registration: {declCompany.roc}</div>}
-                </div>
-             </div>
-             <div className="text-right">
+          <LetterheadHeader 
+            docType="CIPL" 
+            title={declCompany.name}
+            subtitle=""
+            rightNode={
+              <div className="text-right">
                 <h2 className="text-3xl font-black text-slate-900 uppercase tracking-widest mb-2">Invoice</h2>
                 <div className="text-sm space-y-1">
                    <div><span className="font-semibold text-slate-600">Invoice No:</span> <span className="font-bold">{ci.id}</span></div>
                    <div><span className="font-semibold text-slate-600">Date:</span> <span className="font-bold">{ci.invoiceDate}</span></div>
                    {ci.poNumber && <div><span className="font-semibold text-slate-600">PO No:</span> <span className="font-bold">{ci.poNumber}</span></div>}
                 </div>
-             </div>
-          </div>
+              </div>
+            }
+          />
 
           <div className="col-span-2 text-center font-bold text-lg mb-6 tracking-widest uppercase">Commercial Invoice / Packing List</div>
 
@@ -7990,7 +8147,8 @@ const PrintCommercialInvoiceOverlay = () => {
 };
 
 const PrintReturnNoteOverlay = () => {
-  const { printingReturnNote, setPrintingReturnNote, handlePrintRequest, handleGeneratePDF, receipts } = React.useContext(AppContext);
+  const { printingReturnNote, setPrintingReturnNote, handlePrintRequest, handleGeneratePDF, receipts, formatDate } = React.useContext(AppContext);
+
   if (!printingReturnNote) return null;
   const ret = printingReturnNote;
   const receipt = (receipts || []).find(r => r.id === ret.receiptId) || {};
@@ -8000,7 +8158,7 @@ const PrintReturnNoteOverlay = () => {
       
       <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
         <div><h3 className="font-bold text-lg text-slate-800">Print Return Note</h3></div>
-        <div className="flex space-x-3">
+        <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingReturnNote(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
           <button onClick={() => handleGeneratePDF('a4-print-area', `${ret.id}-ReturnNote.pdf`, 'a4', 10)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors">Print Return Note</button>
@@ -8009,13 +8167,16 @@ const PrintReturnNoteOverlay = () => {
       <div id="a4-print-area" className="flex flex-col items-center w-full pb-20">
         <div className="a4-page bg-white shadow-2xl border border-slate-200 relative flex flex-col" style={{ width: '210mm', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box' }}>
           
-          <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-6">
-            <h1 className="text-3xl font-black text-slate-800">RETURN NOTE</h1>
-            <div className="text-right">
-              <p className="font-mono text-lg font-bold text-orange-700">{ret.id}</p>
-              <p className="font-mono text-sm font-semibold">{formatDate(ret.date)}</p>
-            </div>
-          </div>
+          <LetterheadHeader 
+            docType="ReturnNote" 
+            subtitle="RETURN NOTE"
+            rightNode={
+              <div className="text-right">
+                <p className="font-mono text-lg font-bold text-orange-700">{ret.id}</p>
+                <p className="font-mono text-sm font-semibold">{formatDate(ret.date)}</p>
+              </div>
+            }
+          />
 
           <div className="grid grid-cols-3 gap-6 mb-6 text-sm">
             <div className="border p-3 border-slate-300 rounded bg-slate-50">
@@ -8141,16 +8302,16 @@ const LoginScreen = () => {
     try {
       if (cleanUser === 'SuperAdmin') {
         const isSetupMode = users.length === 0;
-        const envPass = import.meta.env.VITE_SUPERADMIN_PASSWORD;
+        const envPass = (import.meta as any).env.VITE_SUPERADMIN_PASSWORD;
 
         if (password === 'SuperAdmin' && !isSetupMode && !envPass) {
-          setError('Default SuperAdmin account is disabled for security. Please use a registered account.');
+          setError('Default SuperAdmin account is disabled for security. Please use a registered account or configure VITE_SUPERADMIN_PASSWORD.');
           setLoading(false);
           return;
         }
 
         if (password !== 'SuperAdmin' && password !== envPass) {
-          setError(envPass ? 'Invalid credentials.' : 'Invalid credentials. (Note: The VITE_SUPERADMIN_PASSWORD environment variable is not active. Please set it in the AI Studio Settings menu and restart the server).');
+          setError(envPass ? 'Invalid credentials.' : 'Invalid credentials. (Note: The VITE_SUPERADMIN_PASSWORD environment variable is not active).');
           setLoading(false);
           return;
         }
@@ -8619,6 +8780,7 @@ export default function App() {
   const [glCodes, setGlCodes] = useState([]);
   const [services, setServices] = useState([]);
   const [csvExportTemplates, setCsvExportTemplates] = useState([]);
+  const [letterheads, setLetterheads] = useState([]);
   const [containerBookings, setContainerBookings] = useState([]);
   const [haulierBookings, setHaulierBookings] = useState([]);
   const [tariffs, setTariffs] = useState([]);
@@ -8738,6 +8900,7 @@ export default function App() {
       { path: 'glCodes', setter: setGlCodes },
       { path: 'services', setter: setServices },
       { path: 'csvExportTemplates', setter: setCsvExportTemplates },
+      { path: 'letterheads', setter: setLetterheads },
       { path: 'containerBookings', setter: setContainerBookings },
       { path: 'haulierBookings', setter: setHaulierBookings },
       { path: 'commercialInvoices', setter: setCommercialInvoices },
@@ -9002,6 +9165,7 @@ export default function App() {
     glCodes, setGlCodes,
     services, setServices,
     csvExportTemplates, setCsvExportTemplates,
+    letterheads, setLetterheads,
     haulierBookings, setHaulierBookings,
     tariffs, setTariffs,
     editHaulierBookingId, setEditHaulierBookingId,
