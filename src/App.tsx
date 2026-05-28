@@ -9796,13 +9796,13 @@ export default function App() {
           )}
           
           {isMobileMenuOpen && (
-            <div className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>
+            <div className="fixed inset-0 bg-slate-900/50 z-40 xl:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>
           )}
 
-          <div className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} ${getSidebarThemeClasses(appTheme.sidebar).bg} ${getSidebarThemeClasses(appTheme.sidebar).text} fixed inset-y-0 left-0 z-50 lg:relative flex flex-col overflow-y-auto no-print shadow-xl main-app-container transition-all duration-300 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+          <div className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} ${getSidebarThemeClasses(appTheme.sidebar).bg} ${getSidebarThemeClasses(appTheme.sidebar).text} fixed inset-y-0 left-0 z-50 xl:relative flex flex-col overflow-y-auto no-print shadow-xl main-app-container transition-all duration-300 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} xl:translate-x-0`}>
             <div className={`p-6 sticky top-0 ${getSidebarThemeClasses(appTheme.sidebar).bg} z-10 border-b ${getSidebarThemeClasses(appTheme.sidebar).border} flex items-center justify-between relative`}>
               {isMobileMenuOpen && (
-                <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden absolute top-4 right-4 opacity-50 hover:opacity-100 transition-opacity text-inherit">
+                <button onClick={() => setIsMobileMenuOpen(false)} className="xl:hidden absolute top-4 right-4 opacity-50 hover:opacity-100 transition-opacity text-inherit">
                   <X className="w-5 h-5" />
                 </button>
               )}
@@ -10050,7 +10050,7 @@ export default function App() {
           <div className="flex-1 overflow-auto flex flex-col main-app-container min-w-0">
             <header className="bg-white border-b border-slate-200 px-4 md:px-8 py-4 flex justify-between items-center sticky top-0 z-10 shadow-sm">
               <div className="flex items-center space-x-6">
-                 <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-md">
+                 <button onClick={() => setIsMobileMenuOpen(true)} className="xl:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-md">
                    <Menu className="w-5 h-5" />
                  </button>
                  <div className="text-sm font-medium text-slate-500 hidden sm:block flex-shrink-0">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
