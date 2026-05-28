@@ -3,6 +3,79 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer, collection, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
+
+
+const SearchableSelect = ({ options, value, onChange, placeholder = "Select...", disabled = false, className = "w-full p-1.5 text-sm border rounded" }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [search, setSearch] = React.useState('');
+  const wrapperRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredOptions = options.filter(opt => 
+    (opt.label || '').toLowerCase().includes(search.toLowerCase()) || 
+    (opt.value || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const displayValue = options.find(opt => opt.value === value)?.label || value;
+
+  return (
+    <div className="relative w-full" ref={wrapperRef}>
+      <div 
+        className={`${className} bg-white flex items-center justify-between cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+      >
+        <span className="truncate">{displayValue || placeholder}</span>
+        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+      </div>
+      
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg" style={{ minWidth: '10rem' }}>
+          <div className="p-1.5 border-b border-slate-100">
+            <input 
+              type="text" 
+              className="w-full p-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:border-blue-400 uppercase"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value.toUpperCase())}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filteredOptions.length === 0 ? (
+              <div className="p-2 text-sm text-slate-500 text-center">No results found</div>
+            ) : (
+              filteredOptions.map((opt, i) => (
+                <div 
+                  key={i}
+                  className={`p-2 text-sm cursor-pointer hover:bg-blue-50 ${opt.value === value ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-700'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange(opt.value);
+                    setIsOpen(false);
+                    setSearch('');
+                  }}
+                >
+                  {opt.label}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 import { 
   ArrowRightCircle,
   LayoutDashboard, PackagePlus, List, Undo2, Boxes, Plus, Trash2, Save,
@@ -896,7 +969,7 @@ const MasterMaintenance = () => {
     glCodes, setGlCodes, services, setServices, csvExportTemplates, setCsvExportTemplates, letterheads, setLetterheads,
     users, setUsers, warehouses, setWarehouses, containerTypes, setContainerTypes, showMessage, receipts, setReceipts, manifests, setManifests, fclTemplates, setFclTemplates, logActivity,
     storageZones, setStorageZones, storageRates, setStorageRates,
-    masterTariffs, setMasterTariffs, locations, setLocations, miscChargeTypes, setMiscChargeTypes
+    masterTariffs, setMasterTariffs, locations, setLocations, miscChargeTypes, setMiscChargeTypes, uoms, setUoms
   } = React.useContext(AppContext);
 
   if (!checkAccess('master_data', 'view')) return <div className="p-8 text-center text-slate-500">You do not have permission to view Master Data.</div>;
@@ -922,7 +995,8 @@ const MasterMaintenance = () => {
       items: [
         { id: 'warehouses', name: 'Warehouses' }, 
         { id: 'storageZones', name: 'Storage Zones' }, 
-        { id: 'containerTypes', name: 'Container Types' }
+        { id: 'containerTypes', name: 'Container Types' },
+        { id: 'uoms', name: 'Unit of Measure (UoM)' }
       ]
     },
     {
@@ -988,20 +1062,27 @@ const MasterMaintenance = () => {
       case 'masterTariffsMisc': return { data: masterTariffs.filter(m => m.tariffType === 'Misc'), setter: setMasterTariffs, label: 'Misc Tariff' };
       case 'locations': return { data: locations, setter: setLocations, label: 'Location' };
       case 'miscChargeTypes': return { data: miscChargeTypes, setter: setMiscChargeTypes, label: 'Misc Charge Type' };
+      case 'uoms': return { data: uoms, setter: setUoms, label: 'UoM' };
       default: return { data: [], setter: () => {}, label: '', isComplex: false };
     }
   };
 
   const { data, setter, label, isComplex, isRole, isUser, isContainerType, isCurrency, isGlCode, isService, isCsvExportTemplate, isFclTemplate, isStorageZone, isStorageRate } = getActiveState();
 
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
   const handleDeleteComplex = (id) => {
     if (!checkAccess('master_data', 'edit')) return showMessage("You do not have edit permissions for Master Data.");
     if (id === 'user-superadmin' || id === 'role-superadmin') return showMessage("System defaults cannot be deleted.");
-    if (confirm(`Are you sure you want to delete this ${label}?`)) {
-      deleteDoc(doc(db, activeMaster, id))
-        .catch(err => handleFirestoreError(err, OperationType.DELETE, `${activeMaster}/${id}`));
-      logActivity('DELETE', 'Master Data', id, `Deleted ${label} record`);
-    }
+    setDeleteConfirm(id);
+  };
+
+  const executeDelete = () => {
+    if (!deleteConfirm) return;
+    deleteDoc(doc(db, activeMaster, deleteConfirm))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${activeMaster}/${deleteConfirm}`));
+    logActivity('DELETE', 'Master Data', deleteConfirm, `Deleted ${label} record`);
+    setDeleteConfirm(null);
   };
 
   const [formData, setFormData] = useState({
@@ -1086,8 +1167,12 @@ const MasterMaintenance = () => {
     if (activeMaster === 'storageRates') {
       if (!formData.name || !formData.name.trim()) return showMessage("Rate Name is required.");
     }
-    if (activeMaster === 'locations' || activeMaster === 'miscChargeTypes') {
+    if (activeMaster === 'locations' || activeMaster === 'miscChargeTypes' || activeMaster === 'uoms') {
       if (!formData.name || !formData.name.trim()) return showMessage("Name is required.");
+    }
+    if (activeMaster === 'uoms') {
+      const isDuplicate = uoms.some((u: any) => u.name && u.name.trim().toLowerCase() === formData.name.trim().toLowerCase() && u.id !== formData.id);
+      if (isDuplicate) return showMessage("This UoM already exists.");
     }
     if (activeMaster.startsWith('masterTariffs')) {
       if (activeMaster === 'masterTariffsLcl' && (!formData.pol || !formData.pod)) return showMessage("POL and POD are required.");
@@ -2117,6 +2202,13 @@ const MasterMaintenance = () => {
               </>
             )}
 
+            {activeMaster === 'uoms' && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">UoM Name <span className="text-red-500">*</span></label>
+                <input type="text" value={formData.name || ''} onChange={(e) => updateForm('name', e.target.value.toUpperCase())} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Pallet, Carton, KG" />
+              </div>
+            )}
+
             {activeMaster === 'miscChargeTypes' && (
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Misc Charge Name <span className="text-red-500">*</span></label>
@@ -2467,6 +2559,7 @@ const MasterMaintenance = () => {
               {activeMaster === 'glCodes' && <th className="p-3 text-sm font-semibold">Account Name / Type</th>}
               {activeMaster === 'services' && <th className="p-3 text-sm font-semibold">Name / GL Code Mapping</th>}
               {activeMaster === 'csvExportTemplates' && <th className="p-3 text-sm font-semibold">Integration Type / Columns</th>}
+              {activeMaster === 'uoms' && <th className="p-3 text-sm font-semibold">Standard Unit of Measure</th>}
               {activeMaster === 'letterheads' && <th className="p-3 text-sm font-semibold">Company Info</th>}
               {activeMaster === 'ports' && <th className="p-3 text-sm font-semibold">Details</th>}
               {activeMaster === 'fclTemplates' && <th className="p-3 text-sm font-semibold">POL / POD</th>}
@@ -2539,6 +2632,11 @@ const MasterMaintenance = () => {
                        {item.incomeGlCode && <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-1 rounded">Rev: {item.incomeGlCode}</span>}
                        {item.expGlCode && <span className="text-xs bg-red-50 text-red-700 border border-red-200 px-1 rounded">Exp: {item.expGlCode}</span>}
                     </div>
+                  </td>
+                )}
+                {activeMaster === 'uoms' && (
+                  <td className="p-3 text-sm text-slate-600">
+                    UoM Definition
                   </td>
                 )}
                 {activeMaster === 'csvExportTemplates' && (
@@ -2666,6 +2764,25 @@ const MasterMaintenance = () => {
           </tbody>
         </table>
       </div>
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Confirm Delete</h3>
+            <p className="text-slate-600 text-sm mb-6">Are you sure you want to delete this {label}?</p>
+            <div className="flex justify-end space-x-3">
+              <button type="button" onClick={() => setDeleteConfirm(null)} className="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 font-medium text-sm">Cancel</button>
+              <button 
+                type="button" 
+                onClick={executeDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm shadow-sm"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -3083,7 +3200,7 @@ const SystemAdminModule = () => {
     'commercialInvoices', 'breakbulks', 'activityLogs', 'notifications',
     'companies', 'ports', 'currencies', 'glCodes', 'services', 'csvExportTemplates',
     'storageEntries', 'storageZones', 'storageRates', 'vendorBills',
-    'costRecoveries', 'masterTariffs', 'locations', 'miscChargeTypes', 'system'
+    'costRecoveries', 'masterTariffs', 'locations', 'miscChargeTypes', 'system', 'uoms'
   ];
 
   const handleBackupData = async () => {
@@ -3607,7 +3724,7 @@ const PickupForm = () => {
     checkAccess, editPickupId, pickups, setPickups, companies, warehouses,
     pickupCounter, setPickupCounter, generatePickupNo,
     receipts, setEditPickupId, setActiveTab, showMessage,
-    setPrintingPickupNote, logActivity, pushNotificationToRelatedUsers
+    setPrintingPickupNote, logActivity, pushNotificationToRelatedUsers, uoms
   } = React.useContext(AppContext);
 
   const [formData, setFormData] = useState({
@@ -3971,9 +4088,7 @@ const PickupForm = () => {
                 <tr key={line.id} className="hover:bg-slate-50 transition-colors">
                   <td className="p-2"><input type="text" value={line.product} onChange={(e) => updateLine(line.id, 'product', e.target.value)} className="w-full p-1.5 text-sm border rounded" placeholder="Desc..."/></td>
                   <td className="p-2">
-                    <select value={line.uom} onChange={(e) => updateLine(line.id, 'uom', e.target.value)} className="w-full p-1.5 text-sm border rounded">
-                      <option value="Pallet">Pallet</option><option value="Carton">Carton</option><option value="Box">Box</option><option value="Loose">Loose</option>
-                    </select>
+                    <SearchableSelect options={(uoms || []).map(u => ({ value: u.name, label: typeof u.name === 'string' ? u.name.split(' ').map(w => w.charAt(0).toUpperCase() + w.substring(1).toLowerCase()).join(' ') : '' }))} value={line.uom || ''} onChange={(val) => updateLine(line.id, 'uom', val)} className="w-full p-1.5 text-sm border rounded" placeholder="UoM" />
                   </td>
                   <td className="p-2"><input type="number" min="1" value={line.qty} onChange={(e) => updateLine(line.id, 'qty', e.target.value)} className="w-full p-1.5 text-sm border rounded text-center" /></td>
                   <td className="p-2"><input type="number" min="0" value={line.l} onChange={(e) => updateLine(line.id, 'l', e.target.value)} className="w-full p-1.5 text-sm border rounded" /></td>
@@ -4190,7 +4305,7 @@ const ReceiptForm = () => {
     showMessage, generateShipmentId, receiptCountersMap, setReceiptCountersMap, setPrintingReceipt, 
     setActiveTab, calculateCBM, setEditReceiptId,
     convertPickupToReceiptData, setConvertPickupToReceiptData,
-    pickups, setPickups, logActivity, pushNotificationToRelatedUsers
+    pickups, setPickups, logActivity, pushNotificationToRelatedUsers, uoms
   } = React.useContext(AppContext);
 
   if (!checkAccess('receipts', 'create') && !editReceiptId) return <div className="p-8 text-center text-slate-500">You do not have permission to create shipments.</div>;
@@ -4668,7 +4783,7 @@ const ReceiptForm = () => {
               {lines.map((line) => (
                 <tr key={line.id}>
                   <td className="p-2"><input type="text" value={line.product} onChange={(e) => updateLine(line.id, 'product', e.target.value)} className="w-full p-1.5 text-sm border rounded" /></td>
-                  <td className="p-2"><select value={line.uom} onChange={(e) => updateLine(line.id, 'uom', e.target.value)} className="w-full p-1.5 text-sm border rounded"><option>Bundle</option><option>Pallet</option><option>Carton</option><option>Box</option><option>Loose</option></select></td>
+                  <td className="p-2"><SearchableSelect options={(uoms || []).map(u => ({ value: u.name, label: typeof u.name === 'string' ? u.name.split(' ').map(w => w.charAt(0).toUpperCase() + w.substring(1).toLowerCase()).join(' ') : '' }))} value={line.uom || ''} onChange={(val) => updateLine(line.id, 'uom', val)} className="w-full p-1.5 text-sm border rounded" placeholder="UoM" /></td>
                   <td className="p-2"><input type="number" min="1" value={line.qty} onChange={(e) => updateLine(line.id, 'qty', e.target.value)} className="w-full p-1.5 text-sm border rounded" /></td>
                   <td className="p-2"><input type="number" min="0" value={line.l} onChange={(e) => updateLine(line.id, 'l', e.target.value)} className="w-full p-1.5 text-sm border rounded" /></td>
                   <td className="p-2"><input type="number" min="0" value={line.w} onChange={(e) => updateLine(line.id, 'w', e.target.value)} className="w-full p-1.5 text-sm border rounded" /></td>
@@ -4951,7 +5066,7 @@ const ManifestForm = () => {
     checkAccess, editManifestId, manifests, setManifests, setEditManifestId, 
     setActiveTab, ports, getActiveInventory, generateManifestNo, generateLineHBL, 
     hblCountersMap, setHblCountersMap, showMessage, manifestCountersMap, setManifestCountersMap,
-    containerBookings, companies, containerTypes, fclTemplates, logActivity, pushNotificationToRelatedUsers, currencies, db, doc, setDoc
+    containerBookings, companies, containerTypes, fclTemplates, logActivity, pushNotificationToRelatedUsers, currencies, db, doc, setDoc, uoms
   } = React.useContext(AppContext);
 
   const [route, setRoute] = useState({ 
@@ -5648,9 +5763,7 @@ const ManifestForm = () => {
                         <td className="p-1"><input type="text" value={p.hsCode || ''} onChange={(e) => updateFclProduct(idx, 'hsCode', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm font-mono text-center"/></td>
                         <td className="p-1"><input type="number" value={p.qty || ''} onChange={(e) => updateFclProduct(idx, 'qty', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm text-center"/></td>
                         <td className="p-1">
-                          <select value={p.uom || 'Carton'} onChange={(e) => updateFclProduct(idx, 'uom', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm">
-                            <option>Carton</option><option>Pallet</option><option>Pieces</option><option>Bundle</option><option>Unit</option>
-                          </select>
+                          <SearchableSelect options={(uoms || []).map(u => ({ value: u.name, label: typeof u.name === 'string' ? u.name.split(' ').map(w => w.charAt(0).toUpperCase() + w.substring(1).toLowerCase()).join(' ') : '' }))} value={p.uom || ''} onChange={(val) => updateFclProduct(idx, 'uom', val)} className="w-full p-2 border border-slate-300 rounded text-sm" placeholder="UoM" />
                         </td>
                         <td className="p-1"><input type="number" value={p.weight || ''} onChange={(e) => updateFclProduct(idx, 'weight', e.target.value)} className="w-full p-2 border border-slate-300 rounded text-sm text-right"/></td>
                         <td className="p-1 text-center"><button onClick={() => removeFclProduct(idx)} className="text-red-400 hover:text-red-600 p-1"><Trash2 className="w-4 h-4"/></button></td>
@@ -6819,7 +6932,7 @@ const ContainerBookingList = () => {
 const ReturnNoteForm = () => {
   const { 
     checkAccess, editReturnId, returns, setReturns, setEditReturnId, setActiveTab, 
-    receipts, manifests, showMessage, generateReturnNo, setReturnCounter, returnCounter, logActivity
+    receipts, manifests, showMessage, generateReturnNo, setReturnCounter, returnCounter, logActivity, uoms
   } = React.useContext(AppContext);
 
   if (!checkAccess('returns', 'create') && !editReturnId) return <div className="p-8 text-center text-slate-500">You do not have permission to create returns.</div>;
@@ -7227,7 +7340,7 @@ const ReturnList = () => {
 };
 
 const BreakbulkForm = ({ item, onSave, onCancel }) => {
-  const { generateBreakbulkNo, calculateCBM, showMessage } = React.useContext(AppContext);
+  const { generateBreakbulkNo, calculateCBM, showMessage, uoms } = React.useContext(AppContext);
 
   const [breakQty, setBreakQty] = useState(1);
   const [lines, setLines] = useState([{
@@ -7281,7 +7394,7 @@ const BreakbulkForm = ({ item, onSave, onCancel }) => {
               {lines.map(line => (
                 <tr key={line.id}>
                   <td className="p-2"><input type="text" value={line.product} onChange={e => updateLine(line.id, 'product', e.target.value)} className="w-full p-1.5 border rounded" /></td>
-                  <td className="p-2"><select value={line.uom} onChange={e => updateLine(line.id, 'uom', e.target.value)} className="w-full p-1.5 border rounded"><option>Bundle</option><option>Pallet</option><option>Carton</option><option>Box</option><option>Loose</option></select></td>
+                  <td className="p-2"><SearchableSelect options={(uoms || []).map(u => ({ value: u.name, label: typeof u.name === 'string' ? u.name.split(' ').map(w => w.charAt(0).toUpperCase() + w.substring(1).toLowerCase()).join(' ') : '' }))} value={line.uom || ''} onChange={(val) => updateLine(line.id, 'uom', val)} className="w-full p-1.5 border rounded" placeholder="UoM" /></td>
                   <td className="p-2"><input type="number" min="1" value={line.qty} onChange={e => updateLine(line.id, 'qty', e.target.value)} className="w-full p-1.5 border rounded" /></td>
                   <td className="p-2"><input type="number" value={line.l} onChange={e => updateLine(line.id, 'l', e.target.value)} className="w-full p-1.5 border rounded" /></td>
                   <td className="p-2"><input type="number" value={line.w} onChange={e => updateLine(line.id, 'w', e.target.value)} className="w-full p-1.5 border rounded" /></td>
@@ -9355,6 +9468,7 @@ export default function App() {
   const [masterTariffs, setMasterTariffs] = useState([]);
   const [locations, setLocations] = useState([]);
   const [miscChargeTypes, setMiscChargeTypes] = useState([]);
+  const [uoms, setUoms] = useState([]);
   const [haulierCounter, setHaulierCounter] = useState(1);
   const [editHaulierBookingId, setEditHaulierBookingId] = useState(null);
 
@@ -9478,7 +9592,8 @@ export default function App() {
       { path: 'locations', setter: setLocations },
       { path: 'miscChargeTypes', setter: setMiscChargeTypes },
       { path: 'activityLogs', setter: setActivityLogs },
-      { path: 'notifications', setter: setNotifications }
+      { path: 'notifications', setter: setNotifications },
+      { path: 'uoms', setter: setUoms }
     ];
 
     const unsubscribers = operationalCollections.map(col => {
@@ -9730,7 +9845,7 @@ export default function App() {
     costRecoveries, setCostRecoveries,
     masterTariffs, setMasterTariffs,
     locations, setLocations,
-    miscChargeTypes, setMiscChargeTypes,
+    miscChargeTypes, setMiscChargeTypes, uoms, setUoms,
     companies, setCompanies,
     ports, setPorts,
     users, setUsers,
@@ -9784,6 +9899,7 @@ export default function App() {
     <AppContext.Provider value={contextValue}>
       { !currentUser ? <LoginScreen /> : (
         <div className={`flex h-[100dvh] w-full overflow-hidden ${getMainThemeClasses(appTheme.main)} font-sans text-slate-900 relative`}>
+           
           
           {appMessage && (
             <div className="fixed inset-0 z-[100] flex items-start justify-center pt-10 pointer-events-none print:hidden">

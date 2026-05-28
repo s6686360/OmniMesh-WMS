@@ -2,8 +2,81 @@ import React, { useState, useContext, useEffect, useMemo } from 'react';
 import { Plus, Edit, Trash2, ArrowLeft, Save, FileText, CheckCircle, Calculator, ChevronDown, ChevronRight, DollarSign, Activity } from 'lucide-react';
 import { AppContext } from './App';
 
+
+const SearchableSelect = ({ options, value, onChange, placeholder = "Select...", disabled = false, className = "w-full p-1.5 text-sm border rounded" }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [search, setSearch] = React.useState('');
+  const wrapperRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredOptions = options.filter(opt => 
+    (opt.label || '').toLowerCase().includes(search.toLowerCase()) || 
+    (opt.value || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const displayValue = options.find(opt => opt.value === value)?.label || value;
+
+  return (
+    <div className="relative w-full" ref={wrapperRef}>
+      <div 
+        className={`${className} bg-white flex items-center justify-between cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+      >
+        <span className="truncate">{displayValue || placeholder}</span>
+        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+      </div>
+      
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg" style={{ minWidth: '10rem' }}>
+          <div className="p-1.5 border-b border-slate-100">
+            <input 
+              type="text" 
+              className="w-full p-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:border-blue-400 uppercase"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value.toUpperCase())}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+            />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filteredOptions.length === 0 ? (
+              <div className="p-2 text-sm text-slate-500 text-center">No results found</div>
+            ) : (
+              filteredOptions.map((opt, i) => (
+                <div 
+                  key={i}
+                  className={`p-2 text-sm cursor-pointer hover:bg-blue-50 ${opt.value === value ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-700'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange(opt.value);
+                    setIsOpen(false);
+                    setSearch('');
+                  }}
+                >
+                  {opt.label}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 export const VendorBillsView = () => {
-  const { vendorBills, setVendorBills, companies, manifests, containerBookings, miscChargeTypes, receipts, checkAccess, showMessage, currentUser, logActivity, db, doc, setDoc, deleteDoc } = useContext(AppContext);
+  const { vendorBills, setVendorBills, companies, manifests, containerBookings, miscChargeTypes, receipts, uoms, checkAccess, showMessage, currentUser, logActivity, db, doc, setDoc, deleteDoc } = useContext(AppContext);
   const [viewMode, setViewMode] = useState('list');
   const [editId, setEditId] = useState(null);
   const [expandedBills, setExpandedBills] = useState({});
@@ -158,7 +231,7 @@ export const VendorBillsView = () => {
 };
 
 const VendorBillForm = ({ editId, onBack }) => {
-  const { vendorBills, setVendorBills, companies, manifests, containerBookings, miscChargeTypes, receipts, checkAccess, showMessage, logActivity, currentUser, fclTemplates, currencies, db, doc, setDoc } = useContext(AppContext);
+  const { vendorBills, setVendorBills, companies, manifests, containerBookings, miscChargeTypes, receipts, uoms, checkAccess, showMessage, logActivity, currentUser, fclTemplates, currencies, db, doc, setDoc } = useContext(AppContext);
   
   const [formData, setFormData] = useState({
     id: '', vendorId: '', invoiceNo: '', date: new Date().toISOString().split('T')[0], dueDate: '',
@@ -615,14 +688,7 @@ const VendorBillForm = ({ editId, onBack }) => {
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">UOM</label>
-                    <select disabled={!isEditable} value={line.uom || 'UNIT'} onChange={(e) => handleLineChange(line.id, 'uom', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md text-sm bg-white">
-                      <option value="UNIT">UNIT</option>
-                      <option value="CBM">CBM</option>
-                      <option value="KG">KG</option>
-                      <option value="TRIP">TRIP</option>
-                      <option value="MONTH">MONTH</option>
-                      <option value="SQFT">SQFT</option>
-                    </select>
+                    <SearchableSelect options={(uoms || []).map(u => ({ value: u.name, label: typeof u.name === 'string' ? u.name.split(' ').map(w => w.charAt(0).toUpperCase() + w.substring(1).toLowerCase()).join(' ') : '' }))} disabled={!isEditable} value={line.uom || ''} onChange={(val) => handleLineChange(line.id, 'uom', val)} className="w-full p-2 border border-slate-300 rounded-md text-sm bg-white" placeholder="UoM" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Unit Price</label>

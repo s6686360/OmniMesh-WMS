@@ -50,6 +50,7 @@ service cloud.firestore {
     match /ports/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /warehouses/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /containerTypes/{id} { allow read: if true; allow write: if isSignedIn(); }
+    match /uoms/{id} { allow read, write: if isSignedIn(); }
     match /users/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /roles/{id} { allow read: if true; allow write: if isSignedIn(); }
 
