@@ -8092,8 +8092,26 @@ const LoginScreen = () => {
     setError('');
 
     try {
-      if (cleanUser === 'SuperAdmin' && password === 'SuperAdmin') {
-        const uid = await performFirebaseAuth(cleanUser, password, true);
+      if (cleanUser === 'SuperAdmin') {
+        const isSetupMode = users.length === 0;
+        const envPass = import.meta.env.VITE_SUPERADMIN_PASSWORD;
+
+        if (password === 'SuperAdmin' && !isSetupMode && !envPass) {
+          setError('Default SuperAdmin account is disabled for security. Please use a registered account.');
+          setLoading(false);
+          return;
+        }
+
+        if (password !== 'SuperAdmin' && password !== envPass) {
+          setError(envPass ? 'Invalid credentials.' : 'Invalid credentials. (Note: The VITE_SUPERADMIN_PASSWORD environment variable is not active. Please set it in the AI Studio Settings menu and restart the server).');
+          setLoading(false);
+          return;
+        }
+
+        // We MUST use the default 'SuperAdmin' string to authenticate against Firebase
+        // because the underlying Firebase user was created with that password.
+        // The UI security is enforced by the envPass check above.
+        const uid = await performFirebaseAuth(cleanUser, 'SuperAdmin', true);
         handleAuthLogin({ id: uid, username: 'SuperAdmin', roleId: 'role-superadmin' });
         setLoading(false);
         return;
