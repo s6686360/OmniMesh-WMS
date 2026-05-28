@@ -3672,7 +3672,7 @@ const PickupForm = () => {
 
   const handleFormChange = (e) => {
     let value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    if (e.target.tagName !== 'SELECT' && typeof value === 'string') {
+    if (e.target.tagName !== 'SELECT' && typeof value === 'string' && e.target.type !== 'radio') {
       value = value.toUpperCase();
     }
     setFormData(prev => ({ ...prev, [e.target.name]: value }));
@@ -4299,7 +4299,7 @@ const ReceiptForm = () => {
 
   const handleFormChange = (e) => {
     let value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    if (e.target.tagName !== 'SELECT' && typeof value === 'string' && e.target.name !== 'isUrgent') {
+    if (e.target.tagName !== 'SELECT' && typeof value === 'string' && !['isUrgent', 'conditionStatus'].includes(e.target.name) && e.target.type !== 'radio') {
       value = value.toUpperCase();
     }
     setFormData(prev => ({ ...prev, [e.target.name]: value }));
