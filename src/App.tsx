@@ -307,7 +307,7 @@ const DashboardView = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-center space-x-4">
           <div className="p-3 bg-amber-100 text-amber-600 rounded-lg"><ClipboardList className="w-8 h-8" /></div>
           <div><p className="text-sm text-slate-500 font-medium">Pending Pickups</p><p className="text-2xl font-bold text-slate-800">{pendingPickupsCount}</p></div>
@@ -357,7 +357,7 @@ const DashboardView = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-slate-100 bg-slate-50">
             <h3 className="text-lg font-semibold text-slate-800">Pending LCL Cargo</h3>
@@ -685,7 +685,7 @@ const TrackCargoView = () => {
                 </div>
 
                 <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 pb-6 border-b border-slate-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6 pb-6 border-b border-slate-100">
                     <div><p className="text-xs uppercase font-bold text-slate-400">Customer</p><p className="font-semibold text-slate-800">{r.customer}</p></div>
                     <div><p className="text-xs uppercase font-bold text-slate-400">Consignor</p><p className="font-semibold text-slate-800">{r.consignor}</p></div>
                     <div><p className="text-xs uppercase font-bold text-slate-400">Consignee</p><p className="font-semibold text-slate-800">{r.consignee}</p></div>
@@ -701,7 +701,7 @@ const TrackCargoView = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                     <div>
                       <h4 className="font-bold text-slate-800 mb-3 flex items-center"><Ship className="w-5 h-5 mr-2 text-teal-600"/> Assigned Manifests</h4>
                       {mForReceipt.length === 0 ? <p className="text-sm text-slate-500 italic p-4 bg-slate-50 rounded">No cargo loaded to containers yet.</p> : (
@@ -766,7 +766,7 @@ const TrackCargoView = () => {
                   </div>
                 </div>
                 <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div><p className="text-xs uppercase font-bold text-slate-400">Customer</p><p className="font-semibold text-slate-800">{p.customerName || '-'}</p></div>
                     <div><p className="text-xs uppercase font-bold text-slate-400">Consignor</p><p className="font-semibold text-slate-800">{p.consignorName || '-'}</p></div>
                     <div><p className="text-xs uppercase font-bold text-slate-400">Transporter</p><p className="font-semibold text-slate-800">{p.pickupPartyName || '-'}</p></div>
@@ -823,7 +823,7 @@ const TrackCargoView = () => {
                   </div>
                 </div>
                 <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div><p className="text-xs uppercase font-bold text-slate-400">Vessel/Voyage</p><p className="font-semibold text-slate-800">{m.vessel || '-'}</p></div>
                     <div><p className="text-xs uppercase font-bold text-slate-400">Container Number</p><p className="font-semibold font-mono text-slate-800">{m.containerNo || '-'}</p></div>
                     <div><p className="text-xs uppercase font-bold text-slate-400">Job No</p><p className="font-semibold text-slate-800">{m.jobNo || '-'}</p></div>
@@ -2156,7 +2156,7 @@ const MasterMaintenance = () => {
                 <div><label className="block text-sm font-medium text-slate-700 mb-1">ROC Number</label><input type="text" value={formData.roc || ''} onChange={(e) => updateForm('roc', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
                 <div><label className="block text-sm font-medium text-slate-700 mb-1">TIN (for e-invoice)</label><input type="text" value={formData.tin || ''} onChange={(e) => updateForm('tin', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
                 
-                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
                   <div><label className="block text-sm font-medium text-slate-700 mb-1">SST Number</label><input type="text" value={formData.sstNumber || ''} onChange={(e) => updateForm('sstNumber', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
                   <div className="flex items-center pt-5 pl-2">
                     <label className="flex items-center space-x-2 cursor-pointer"><input type="checkbox" checked={formData.groupJSSTExempted} onChange={(e) => updateForm('groupJSSTExempted', e.target.checked)} className="rounded text-purple-600 w-5 h-5 focus:ring-purple-500"/><span className="text-sm font-black text-purple-800">Group J SST Exempted</span></label>
@@ -2239,7 +2239,7 @@ const MasterMaintenance = () => {
               
               <div className="mt-4 border-t border-slate-200 pt-4">
                 <label className="block text-sm font-medium text-slate-700 mb-3">Apply Letterhead to Documents</label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                    {[
                      { id: 'GRN', label: 'Goods Received Note' },
                      { id: 'ReturnNote', label: 'Return Note' },
@@ -2922,6 +2922,282 @@ const SystemAdminModule = () => {
   const [wipeProgress, setWipeProgress] = useState(0);
   const [wipeStatus, setWipeStatus] = useState('');
 
+  
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [backupRestoreProgress, setBackupRestoreProgress] = useState(0);
+  const [backupRestoreStatus, setBackupRestoreStatus] = useState('');
+
+  
+  const [cloudBackups, setCloudBackups] = useState([]);
+  const [isCloudBackingUp, setIsCloudBackingUp] = useState(false);
+  const [isCloudRestoring, setIsCloudRestoring] = useState(false);
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(() => {
+    return localStorage.getItem('omnimesh_auto_backup') === 'true';
+  });
+
+  const fetchCloudBackups = async () => {
+    try {
+      const { collection, getDocs, query, orderBy, limit } = await import('firebase/firestore');
+      const q = query(collection(db, 'cloudBackups'), orderBy('timestamp', 'desc'), limit(10));
+      const snapshot = await getDocs(q);
+      const backups = [];
+      snapshot.forEach(doc => backups.push({ id: doc.id, ...doc.data() }));
+      setCloudBackups(backups);
+    } catch (e) {
+      console.warn("Could not fetch cloud backups", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchCloudBackups();
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('omnimesh_auto_backup', autoBackupEnabled.toString());
+    
+    // Auto backup every 1 hour if enabled
+    let interval;
+    if (autoBackupEnabled) {
+      interval = setInterval(() => {
+        handleCloudBackup("Auto Backup");
+      }, 60 * 60 * 1000); 
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    }
+  }, [autoBackupEnabled]);
+
+  const handleCloudBackup = async (label = "Manual Backup") => {
+    try {
+      setIsCloudBackingUp(true);
+      setBackupRestoreProgress(0);
+      setBackupRestoreStatus('Initializing cloud backup...');
+      
+      const { collection, getDocs, doc, setDoc } = await import('firebase/firestore');
+      const backupData = {};
+      
+      let completed = 0;
+      for (const colName of backupCollectionsList) {
+        setBackupRestoreStatus(`Exporting ${colName}...`);
+        const querySnapshot = await getDocs(collection(db, colName));
+        const docs = [];
+        querySnapshot.forEach(doc => {
+          docs.push({ _id: doc.id, ...doc.data() });
+        });
+        backupData[colName] = docs;
+        
+        completed++;
+        setBackupRestoreProgress(Math.round((completed / backupCollectionsList.length) * 100));
+      }
+      
+      setBackupRestoreStatus('Saving to cloud...');
+      const backupId = `backup_${Date.now()}`;
+      const backupString = JSON.stringify({ timestamp: new Date().toISOString(), label, data: backupData });
+      
+      // We store it as a single chunk if small enough, but to be safe against firestore size limits, 
+      // we'll try storing the stringified data in text chunks if it gets too big, or simply in one doc first.
+      
+      const chunks = backupString.match(/.{1,800000}/g) || [];
+      await setDoc(doc(db, 'cloudBackups', backupId), {
+        timestamp: new Date().toISOString(),
+        label,
+        chunks: chunks.length
+      });
+      
+      for(let i=0; i<chunks.length; i++) {
+         await setDoc(doc(db, `cloudBackups/${backupId}/chunks`, `chunk_${i}`), {
+            data: chunks[i],
+            index: i
+         });
+      }
+
+      showMessage('Cloud Backup completed successfully.', 'success');
+      fetchCloudBackups();
+    } catch (error) {
+      console.error(error);
+      showMessage('Cloud Backup failed: ' + error.message, 'error');
+    } finally {
+      setIsCloudBackingUp(false);
+      setBackupRestoreProgress(0);
+      setBackupRestoreStatus('');
+    }
+  };
+
+  const handleRestoreCloudBackup = async (backupId) => {
+    if (!window.confirm('WARNING: Restoring a cloud backup will add/overwrite existing records with the data from the cloud backup. Are you sure you want to proceed?')) {
+      return;
+    }
+
+    try {
+      setIsCloudRestoring(true);
+      setBackupRestoreProgress(0);
+      setBackupRestoreStatus('Reading from cloud...');
+      
+      const { collection, getDocs, doc, setDoc } = await import('firebase/firestore');
+      
+      const chunksSnap = await getDocs(collection(db, `cloudBackups/${backupId}/chunks`));
+      const chunksData = [];
+      chunksSnap.forEach(doc => chunksData.push(doc.data()));
+      chunksData.sort((a,b) => a.index - b.index);
+      
+      const fullString = chunksData.map(c => c.data).join('');
+      const parsed = JSON.parse(fullString);
+      
+      if (!parsed.data) {
+        throw new Error('Invalid backup file format.');
+      }
+      const backupData = parsed.data;
+      
+      let completed = 0;
+      const collectionsToRestore = Object.keys(backupData);
+      
+      for (const colName of collectionsToRestore) {
+        setBackupRestoreStatus(`Restoring ${colName}...`);
+        const docs = backupData[colName];
+        for (const docData of docs) {
+          const id = docData._id;
+          const dataToSave = { ...docData };
+          delete dataToSave._id;
+          await setDoc(doc(db, colName, id), dataToSave, { merge: true });
+        }
+        completed++;
+        setBackupRestoreProgress(Math.round((completed / collectionsToRestore.length) * 100));
+      }
+      
+      showMessage('Cloud data restored successfully. You may need to refresh the page.', 'success');
+    } catch (err) {
+      console.error(err);
+      showMessage('Restore failed: ' + err.message, 'error');
+    } finally {
+      setIsCloudRestoring(false);
+      setBackupRestoreProgress(0);
+      setBackupRestoreStatus('');
+    }
+  };
+
+
+  const backupCollectionsList = [
+    'receipts', 'returns', 'pickups', 'manifests', 'warehouses', 
+    'containerTypes', 'fclTemplates', 'containerBookings', 'haulierBookings', 
+    'commercialInvoices', 'breakbulks', 'activityLogs', 'notifications',
+    'companies', 'ports', 'currencies', 'glCodes', 'services', 'csvExportTemplates',
+    'storageEntries', 'storageZones', 'storageRates', 'vendorBills',
+    'costRecoveries', 'masterTariffs', 'locations', 'miscChargeTypes', 'system'
+  ];
+
+  const handleBackupData = async () => {
+    try {
+      setIsBackingUp(true);
+      setBackupRestoreProgress(0);
+      setBackupRestoreStatus('Initializing backup...');
+      
+      const { collection, getDocs } = await import('firebase/firestore');
+      const backupData = {};
+      
+      let completed = 0;
+      for (const colName of backupCollectionsList) {
+        setBackupRestoreStatus(`Exporting ${colName}...`);
+        const querySnapshot = await getDocs(collection(db, colName));
+        const docs = [];
+        querySnapshot.forEach(doc => {
+          docs.push({ _id: doc.id, ...doc.data() });
+        });
+        backupData[colName] = docs;
+        
+        completed++;
+        setBackupRestoreProgress(Math.round((completed / backupCollectionsList.length) * 100));
+      }
+      
+      setBackupRestoreStatus('Creating JSON file...');
+      const backupString = JSON.stringify({ timestamp: new Date().toISOString(), data: backupData }, null, 2);
+      const blob = new Blob([backupString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `omnimesh_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      showMessage('Backup downloaded successfully.', 'success');
+    } catch (error) {
+      console.error(error);
+      showMessage('Backup failed: ' + error.message, 'error');
+    } finally {
+      setIsBackingUp(false);
+      setBackupRestoreProgress(0);
+      setBackupRestoreStatus('');
+    }
+  };
+
+  const handleRestoreData = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!window.confirm('WARNING: Restoring a backup will add/overwrite existing records with the data from the backup file. Are you sure you want to proceed?')) {
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      setIsRestoring(true);
+      setBackupRestoreProgress(0);
+      setBackupRestoreStatus('Reading backup file...');
+      
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const parsed = JSON.parse(event.target.result);
+          if (!parsed.data) {
+            throw new Error('Invalid backup file format.');
+          }
+          const backupData = parsed.data;
+          
+          const { collection, doc, setDoc } = await import('firebase/firestore');
+          
+          let completed = 0;
+          const collectionsToRestore = Object.keys(backupData);
+          
+          for (const colName of collectionsToRestore) {
+            setBackupRestoreStatus(`Restoring ${colName}...`);
+            const docs = backupData[colName];
+            for (const docData of docs) {
+              const id = docData._id;
+              const dataToSave = { ...docData };
+              delete dataToSave._id; // Remove the artificial _id property
+              await setDoc(doc(db, colName, id), dataToSave, { merge: true });
+            }
+            completed++;
+            setBackupRestoreProgress(Math.round((completed / collectionsToRestore.length) * 100));
+          }
+          
+          showMessage('Data restored successfully. You may need to refresh the page to see all changes.', 'success');
+        } catch (err) {
+          console.error(err);
+          showMessage('Restore failed: ' + err.message, 'error');
+        } finally {
+          setIsRestoring(false);
+          setBackupRestoreProgress(0);
+          setBackupRestoreStatus('');
+          // Clear file input
+          e.target.value = '';
+        }
+      };
+      reader.readAsText(file);
+      
+    } catch (error) {
+      console.error(error);
+      showMessage('Restore initialization failed: ' + error.message, 'error');
+      setIsRestoring(false);
+      setBackupRestoreProgress(0);
+      setBackupRestoreStatus('');
+      e.target.value = '';
+    }
+  };
+
+
   const handleWipeData = async () => {
     if (wipeQ1 !== '16091985' || wipeQ2 !== '22081964') {
       showMessage('Security questions answered incorrectly. Wipe aborted.', 'error');
@@ -3096,6 +3372,141 @@ const SystemAdminModule = () => {
           </tbody>
         </table>
       </div>
+
+      
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mt-8">
+        <div className="flex items-start space-x-4">
+          <div className="p-3 bg-blue-100 rounded-full text-blue-600">
+            <Database className="w-8 h-8" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-blue-800">Data Backup & Restore</h3>
+            <p className="text-blue-700 mt-2 text-sm">
+              Create a manual backup of all operational and master data. You can download the backup as a JSON file and restore it later if needed. Note that restoring will overwrite records with the same IDs.
+            </p>
+            <div className="flex flex-wrap items-center gap-4 mt-6">
+              <button 
+                onClick={handleBackupData} 
+                disabled={isBackingUp || isRestoring}
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm transition-colors uppercase tracking-wider text-sm flex items-center space-x-2 disabled:opacity-50"
+              >
+                <FileDown className="w-4 h-4" />
+                <span>{isBackingUp ? 'Exporting...' : 'Export Backup'}</span>
+              </button>
+              
+              <div className="relative">
+                <input 
+                  type="file" 
+                  accept=".json"
+                  onChange={handleRestoreData}
+                  disabled={isBackingUp || isRestoring}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                />
+                <button 
+                  disabled={isBackingUp || isRestoring}
+                  className="px-6 py-2.5 bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 font-bold rounded-lg shadow-sm transition-colors uppercase tracking-wider text-sm flex items-center space-x-2 disabled:opacity-50"
+                >
+                  <ArrowUpDown className="w-4 h-4" />
+                  <span>{isRestoring ? 'Restoring...' : 'Import Backup'}</span>
+                </button>
+              </div>
+            </div>
+            {(isBackingUp || isRestoring) && (
+              <div className="mt-4">
+                <div className="flex justify-between text-xs text-blue-700 font-medium mb-1">
+                  <span>{backupRestoreStatus}</span>
+                  <span>{backupRestoreProgress}%</span>
+                </div>
+                <div className="w-full bg-blue-200 rounded-full h-2">
+                  <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" style={{ width: `${backupRestoreProgress}%` }}></div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+
+      
+      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-6 mt-8">
+        <div className="flex items-start space-x-4">
+          <div className="p-3 bg-indigo-100 rounded-full text-indigo-600">
+            <Database className="w-8 h-8" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-indigo-800">Cloud Data Backup & Restore</h3>
+            <p className="text-indigo-700 mt-2 text-sm">
+              Save your data directly to the cloud and restore from previous cloud backups. You can also enable automatic scheduled backups (runs while the app is active).
+            </p>
+            
+            <div className="flex items-center space-x-3 mt-4">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" className="sr-only peer" checked={autoBackupEnabled} onChange={(e) => setAutoBackupEnabled(e.target.checked)} />
+                <div className="w-11 h-6 bg-indigo-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-indigo-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+              <span className="text-sm font-medium text-indigo-800">Enable Auto-Backup (Every 1 Hour while app is open)</span>
+            </div>
+
+            <div className="mt-6 flex gap-4">
+              <button 
+                onClick={() => handleCloudBackup("Manual Cloud Backup")} 
+                disabled={isCloudBackingUp || isCloudRestoring || isBackingUp || isRestoring}
+                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-sm transition-colors uppercase tracking-wider text-sm flex items-center space-x-2 disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isCloudBackingUp ? 'Saving to Cloud...' : 'Create Cloud Backup Now'}</span>
+              </button>
+            </div>
+            
+            {(isCloudBackingUp || isCloudRestoring) && (
+              <div className="mt-4">
+                <div className="flex justify-between text-xs text-indigo-700 font-medium mb-1">
+                  <span>{backupRestoreStatus}</span>
+                  <span>{backupRestoreProgress}%</span>
+                </div>
+                <div className="w-full bg-indigo-200 rounded-full h-2">
+                  <div className="bg-indigo-600 h-2 rounded-full transition-all duration-300" style={{ width: `${backupRestoreProgress}%` }}></div>
+                </div>
+              </div>
+            )}
+
+            {cloudBackups.length > 0 && (
+              <div className="mt-6">
+                <h4 className="font-bold text-indigo-800 mb-3 text-sm uppercase">Recent Cloud Backups</h4>
+                <div className="bg-white rounded-lg border border-indigo-200 overflow-hidden">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-indigo-50 text-indigo-800">
+                      <tr>
+                        <th className="px-4 py-3 border-b border-indigo-200">Date/Time</th>
+                        <th className="px-4 py-3 border-b border-indigo-200">Label</th>
+                        <th className="px-4 py-3 border-b border-indigo-200 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cloudBackups.map(backup => (
+                        <tr key={backup.id} className="border-b border-indigo-100 last:border-0 hover:bg-slate-50">
+                          <td className="px-4 py-3 font-mono text-slate-600">{new Date(backup.timestamp).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-slate-800 font-medium">{backup.label}</td>
+                          <td className="px-4 py-3 text-right">
+                            <button 
+                              onClick={() => handleRestoreCloudBackup(backup.id)}
+                              disabled={isCloudBackingUp || isCloudRestoring || isBackingUp || isRestoring}
+                              className="text-indigo-600 hover:text-indigo-800 font-medium px-3 py-1 flex items-center justify-end space-x-1"
+                            >
+                              <ArrowUpDown className="w-4 h-4" /> <span>Restore</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
 
       <div className="bg-red-50 border border-red-200 rounded-xl p-6 mt-8">
         <div className="flex items-start space-x-4">
@@ -5076,7 +5487,7 @@ const ManifestForm = () => {
       </div>
 
       {route.type === 'LCL' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col h-[600px]">
             <div className="flex justify-between items-center mb-4 border-b pb-2">
               <h3 className="text-lg font-semibold text-slate-800">Available LCL Cargo</h3>
@@ -5887,7 +6298,7 @@ const HaulierBookingForm = () => {
 
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
          <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Leg 1: {formData.segment === 'POL' ? 'Empty Container (Depot to Warehouse)' : 'Laden Container (Port/Depot to Warehouse)'}</h3>
-         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">Location To</label><input type="text" value={formData.emptyLeg.location || ''} onChange={(e) => { handleLegChange('emptyLeg', 'location', e.target.value); if (!formData.ladenLeg.location) handleLegChange('ladenLeg', 'location', e.target.value); }} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Warehouse A" /></div>
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Slot Date</label><input type="date" max={formData.ladenLeg.slotDate || undefined} value={formData.emptyLeg.slotDate} onChange={(e) => handleLegChange('emptyLeg', 'slotDate', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Slot Time</label><input type="time" value={formData.emptyLeg.slotTime} onChange={(e) => handleLegChange('emptyLeg', 'slotTime', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
@@ -5926,7 +6337,7 @@ const HaulierBookingForm = () => {
 
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
          <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Leg 2: {formData.segment === 'POL' ? 'Laden Container (Warehouse to Port)' : 'Empty Container (Warehouse to Depot)'}</h3>
-         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">Location To</label><input type="text" value={formData.ladenLeg.location || ''} onChange={(e) => handleLegChange('ladenLeg', 'location', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Port Terminal" /></div>
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Slot Date</label><input type="date" min={formData.emptyLeg.slotDate || undefined} value={formData.ladenLeg.slotDate} onChange={(e) => handleLegChange('ladenLeg', 'slotDate', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Slot Time</label><input type="time" value={formData.ladenLeg.slotTime} onChange={(e) => handleLegChange('ladenLeg', 'slotTime', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
@@ -6031,7 +6442,7 @@ const HaulierBookingList = () => {
           <button onClick={() => { setEditHaulierBookingId(null); setActiveTab('new-haulier-booking'); setIsMobileMenuOpen(false); }} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">New Haulier Booking</button>
         </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 items-start">
          {renderTable(polList, "POL (Export) Movements")}
          {renderTable(podList, "POD (Import) Movements")}
       </div>
@@ -6593,7 +7004,7 @@ const ReturnNoteForm = () => {
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
           <div className="flex flex-col space-y-3">
             {editReturnId ? (
               <div>
@@ -7795,7 +8206,7 @@ const StorageServiceView = () => {
                 {formData.lines.map((line, idx) => (
                   <div key={line.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200 relative group">
                     <button onClick={() => removeLine(idx)} className="absolute -right-2 -top-2 bg-white text-red-400 p-1 rounded-full border border-slate-200 shadow-sm opacity-0 group-hover:opacity-100 transition"><Trash2 className="w-4 h-4"/></button>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                       <div className="md:col-span-2">
                         <label className="block text-[10px] font-bold text-slate-400 uppercase">Product Description</label>
                         <input type="text" value={line.product} onChange={(e) => updateLine(idx, 'product', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded bg-white" placeholder="e.g. Spare Parts" />
@@ -9385,13 +9796,13 @@ export default function App() {
           )}
           
           {isMobileMenuOpen && (
-            <div className="fixed inset-0 bg-slate-900/50 z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>
+            <div className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>
           )}
 
-          <div className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} ${getSidebarThemeClasses(appTheme.sidebar).bg} ${getSidebarThemeClasses(appTheme.sidebar).text} fixed inset-y-0 left-0 z-50 md:relative flex flex-col overflow-y-auto no-print shadow-xl main-app-container transition-all duration-300 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+          <div className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} ${getSidebarThemeClasses(appTheme.sidebar).bg} ${getSidebarThemeClasses(appTheme.sidebar).text} fixed inset-y-0 left-0 z-50 lg:relative flex flex-col overflow-y-auto no-print shadow-xl main-app-container transition-all duration-300 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
             <div className={`p-6 sticky top-0 ${getSidebarThemeClasses(appTheme.sidebar).bg} z-10 border-b ${getSidebarThemeClasses(appTheme.sidebar).border} flex items-center justify-between relative`}>
               {isMobileMenuOpen && (
-                <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden absolute top-4 right-4 opacity-50 hover:opacity-100 transition-opacity text-inherit">
+                <button onClick={() => setIsMobileMenuOpen(false)} className="lg:hidden absolute top-4 right-4 opacity-50 hover:opacity-100 transition-opacity text-inherit">
                   <X className="w-5 h-5" />
                 </button>
               )}
@@ -9639,7 +10050,7 @@ export default function App() {
           <div className="flex-1 overflow-auto flex flex-col main-app-container min-w-0">
             <header className="bg-white border-b border-slate-200 px-4 md:px-8 py-4 flex justify-between items-center sticky top-0 z-10 shadow-sm">
               <div className="flex items-center space-x-6">
-                 <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-md">
+                 <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-md">
                    <Menu className="w-5 h-5" />
                  </button>
                  <div className="text-sm font-medium text-slate-500 hidden sm:block flex-shrink-0">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
@@ -9705,7 +10116,7 @@ export default function App() {
                 </button>
                 <ThemePicker />
                 <div className="flex items-center space-x-2 border-r border-slate-200 pr-2 md:pr-4 pl-2 md:pl-4">
-                  <UserCircle className="w-5 h-5 text-blue-600 hidden xs:block" />
+                  <UserCircle className="w-5 h-5 text-blue-600 hidden sm:block" />
                   <span className="text-sm font-bold text-slate-700 max-w-[80px] md:max-w-none truncate">{currentUser.username}</span>
                 </div>
                 <button 

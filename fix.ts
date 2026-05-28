@@ -1,13 +1,8 @@
-import fs from "fs";
-const appFile = "./src/App.tsx";
-let appContent = fs.readFileSync(appFile, "utf-8");
-appContent = appContent.replace(/z-\[60\]/g, "z-50");
-appContent = appContent.replace(/z-50 no-print/g, "z-40 no-print");
-fs.writeFileSync(appFile, appContent);
+import fs from 'fs';
 
-const ciFile = "./src/PrintCommercialInvoiceOverlay.tsx";
-let ciContent = fs.readFileSync(ciFile, "utf-8");
-ciContent = ciContent.replace(/z-\[60\]/g, "z-50");
-ciContent = ciContent.replace(/z-50 no-print/g, "z-40 no-print");
-fs.writeFileSync(ciFile, ciContent);
-console.log("Done");
+let content = fs.readFileSync('src/App.tsx', 'utf8');
+
+content = content.replace(/\\n\\n  const backupCollectionsList = \[/, '\n\n  const backupCollectionsList = [');
+content = content.replace(/\\n\\n      <div className="bg-red-50 border border-red-200 rounded-xl p-6 mt-8">/g, '\n\n      <div className="bg-red-50 border border-red-200 rounded-xl p-6 mt-8">');
+
+fs.writeFileSync('src/App.tsx', content);

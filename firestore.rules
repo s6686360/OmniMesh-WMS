@@ -59,5 +59,8 @@ service cloud.firestore {
     match /notifications/{id} { 
       allow read, write: if isSignedIn();
     }
+    match /cloudBackups/{document=**} {
+      allow read, write: if isSignedIn();
+    }
   }
 }
