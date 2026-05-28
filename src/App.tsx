@@ -14,6 +14,9 @@ import { CommercialInvoiceForm } from './CommercialInvoiceForm';
 import { CommercialInvoiceList } from './CommercialInvoiceList';
 import { ReportModule } from './ReportModule';
 import { HandbookOverlay } from './HandbookOverlay';
+import { VendorBillsView } from './VendorBillView';
+import { CostRecoveryView } from './CostRecoveryView';
+import AccountingIntegration from './AccountingIntegration';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -102,14 +105,18 @@ const MODULE_PERMISSIONS = [
   { id: 'returns', name: 'Returns', actions: ['view', 'create', 'edit', 'cancel', 'print'] },
   { id: 'breakbulks', name: 'Breakbulk', actions: ['view', 'create', 'edit'] },
   { id: 'commercial_invoices', name: 'Commercial Invoices', actions: ['view', 'create', 'edit', 'print'] },
+  { id: 'vendor_bills', name: 'Vendor Bills', actions: ['view', 'create', 'edit', 'delete'] },
+  { id: 'cost_recovery', name: 'Container P&L', actions: ['view', 'create', 'edit', 'delete'] },
+  { id: 'accounting', name: 'Accounting Integration', actions: ['view'] },
   { id: 'track_cargo', name: 'Track Cargo', actions: ['view'] },
   { id: 'inventory', name: 'Inventory', actions: ['view', 'split'] },
   { id: 'reports', name: 'Reports', actions: ['view'] },
   { id: 'master_data', name: 'Master Data', actions: ['view', 'create', 'edit', 'delete'] },
+  { id: 'storage_service', name: 'Storage Service', actions: ['view', 'create', 'edit', 'outbound'] },
   { id: 'activity_logs', name: 'Activity Logs', actions: ['view'] },
 ];
 
-const AppContext = React.createContext(null);
+export const AppContext = React.createContext(null);
 
 const formatAddress = (addrObj) => {
   if (!addrObj || typeof addrObj === 'string') return addrObj || '-';
@@ -175,7 +182,7 @@ const DashboardView = () => {
     if (mnf.type !== 'FCL') {
       const route = `${mnf.pol || '-'} → ${mnf.pod || '-'}`;
       if (!assignedByRoute[route]) assignedByRoute[route] = { qty: 0, cbm: 0, weight: 0 };
-      assignedByRoute[route].qty += (mnf.lines || []).reduce((s, l) => s + (l.loadQty || 0), 0);
+      assignedByRoute[route].qty += (mnf.lines || []).reduce((s, l) => s + (parseInt(l.loadQty) || 0), 0);
       assignedByRoute[route].cbm += (mnf.totalCBM || 0);
       assignedByRoute[route].weight += (mnf.totalWeight || 0);
     }
@@ -244,6 +251,14 @@ const DashboardView = () => {
          };
       });
 
+      const containerDetailsFCL = (b.containers || []).filter(c => c.usageType !== 'LCL').map(c => {
+         return {
+            containerId: c.id,
+            containerNo: c.containerNo,
+            containerTypeId: c.containerTypeId
+         };
+      });
+
       dates[dateKey].push({
          booking: b,
          route,
@@ -257,7 +272,8 @@ const DashboardView = () => {
          maxWeight,
          occCbm: maxCbm > 0 ? ((assignedCbm / maxCbm) * 100).toFixed(1) : 0,
          occWeight: maxWeight > 0 ? ((assignedWeight / maxWeight) * 100).toFixed(1) : 0,
-         containerDetails
+         containerDetails,
+         containerDetailsFCL
       });
     });
     
@@ -421,6 +437,28 @@ const DashboardView = () => {
                                       <span className="font-semibold text-slate-700 truncate max-w-[150px]">{it.customer}</span>
                                       <span>Containers: <strong className="text-slate-800">{it.fclContainersCount}</strong></span>
                                    </div>
+                                   {it.containerDetailsFCL && it.containerDetailsFCL.length > 0 && (
+                                      <div className="mt-2 border-t border-slate-100 pt-2 space-y-1.5">
+                                         <p className="text-[9px] uppercase text-slate-400 font-bold tracking-wider">Containers Breakdown</p>
+                                         <div className="space-y-1">
+                                            {it.containerDetailsFCL.map((c: any, cIdx: number) => (
+                                               <div key={cIdx} className="bg-blue-50/30 p-1.5 rounded text-[10px] border border-blue-100/50 flex justify-between items-center">
+                                                  <button 
+                                                    onClick={() => {
+                                                      if (c.containerNo) {
+                                                        openSearchInNewWindow(c.containerNo);
+                                                      }
+                                                    }}
+                                                    className="text-blue-700 font-mono italic truncate max-w-[120px] hover:underline cursor-pointer text-left font-bold"
+                                                  >
+                                                    {c.containerNo || 'No Number'}
+                                                  </button>
+                                                  <span className="text-slate-500 font-bold">{c.containerTypeId}</span>
+                                               </div>
+                                            ))}
+                                         </div>
+                                      </div>
+                                   )}
                                 </div>
                              ))}
                           </div>
@@ -853,14 +891,70 @@ const TrackCargoView = () => {
 
 const MasterMaintenance = () => {
   const { 
-    checkAccess, companies, setCompanies, ports, setPorts, roles, setRoles, 
-    users, setUsers, warehouses, setWarehouses, containerTypes, setContainerTypes, showMessage, receipts, setReceipts, manifests, setManifests, fclTemplates, setFclTemplates, logActivity
+    checkAccess, companies, setCompanies, ports, setPorts, roles, setRoles, currencies, setCurrencies,
+    glCodes, setGlCodes, services, setServices, csvExportTemplates, setCsvExportTemplates,
+    users, setUsers, warehouses, setWarehouses, containerTypes, setContainerTypes, showMessage, receipts, setReceipts, manifests, setManifests, fclTemplates, setFclTemplates, logActivity,
+    storageZones, setStorageZones, storageRates, setStorageRates,
+    masterTariffs, setMasterTariffs, locations, setLocations, miscChargeTypes, setMiscChargeTypes
   } = React.useContext(AppContext);
 
   if (!checkAccess('master_data', 'view')) return <div className="p-8 text-center text-slate-500">You do not have permission to view Master Data.</div>;
 
   const [activeMaster, setActiveMaster] = useState('companies');
+  const [activeCategory, setActiveCategory] = useState('core');
   const [editingItem, setEditingItem] = useState(null); 
+  const [search, setSearch] = useState('');
+
+  const masterCategories = [
+    {
+      id: 'core',
+      name: 'Core & Partners',
+      items: [
+        { id: 'companies', name: 'Companies (Partners)' }, 
+        { id: 'ports', name: 'Ports (POL/POD)' }, 
+        { id: 'locations', name: 'Locations' }
+      ]
+    },
+    {
+      id: 'logistics',
+      name: 'Warehouse & Equipment',
+      items: [
+        { id: 'warehouses', name: 'Warehouses' }, 
+        { id: 'storageZones', name: 'Storage Zones' }, 
+        { id: 'containerTypes', name: 'Container Types' }
+      ]
+    },
+    {
+      id: 'billing',
+      name: 'Billing & Accounting',
+      items: [
+        { id: 'currencies', name: 'Currencies' },
+        { id: 'glCodes', name: 'Chart of Accounts (GL)' },
+        { id: 'services', name: 'Services/Charge Codes' },
+        { id: 'miscChargeTypes', name: 'Misc Charge Types' }
+      ]
+    },
+    {
+      id: 'tariffs',
+      name: 'Tariffs & Costing (Contracts)',
+      items: [
+        { id: 'masterTariffsLcl', name: 'Master/T (LCL)' },
+        { id: 'masterTariffsTransport', name: 'Master/T (Transport)' },
+        { id: 'masterTariffsMisc', name: 'Master/T (Misc)' },
+        { id: 'fclTemplates', name: 'FCL Cost Templates' },
+        { id: 'storageRates', name: 'Storage Rates' } 
+      ]
+    },
+    {
+      id: 'system',
+      name: 'System Admin',
+      items: [
+        { id: 'users', name: 'System Users' }, 
+        { id: 'roles', name: 'Roles' },
+        { id: 'csvExportTemplates', name: 'Export Templates' }
+      ]
+    }
+  ];
 
   const generateEmptyPermissions = () => {
     const perms = {};
@@ -879,12 +973,23 @@ const MasterMaintenance = () => {
       case 'users': return { data: users, setter: setUsers, label: 'User', isUser: true };
       case 'warehouses': return { data: warehouses, setter: setWarehouses, label: 'Warehouse', isComplex: true };
       case 'containerTypes': return { data: containerTypes, setter: setContainerTypes, label: 'Container Type', isContainerType: true };
+      case 'currencies': return { data: currencies, setter: setCurrencies, label: 'Currency', isCurrency: true };
+      case 'glCodes': return { data: glCodes, setter: setGlCodes, label: 'GL Code', isGlCode: true };
+      case 'services': return { data: services, setter: setServices, label: 'Service / Charge Type', isService: true };
+      case 'csvExportTemplates': return { data: csvExportTemplates, setter: setCsvExportTemplates, label: 'CSV Export Template', isCsvExportTemplate: true };
       case 'fclTemplates': return { data: fclTemplates, setter: setFclTemplates, label: 'FCL Cost Template', isFclTemplate: true };
+      case 'storageZones': return { data: storageZones, setter: setStorageZones, label: 'Storage Zone', isStorageZone: true };
+      case 'storageRates': return { data: storageRates, setter: setStorageRates, label: 'Storage Rate', isStorageRate: true };
+      case 'masterTariffsLcl': return { data: masterTariffs.filter(m => m.tariffType === 'LCL'), setter: setMasterTariffs, label: 'LCL Tariff' };
+      case 'masterTariffsTransport': return { data: masterTariffs.filter(m => m.tariffType === 'Transport'), setter: setMasterTariffs, label: 'Transport Tariff' };
+      case 'masterTariffsMisc': return { data: masterTariffs.filter(m => m.tariffType === 'Misc'), setter: setMasterTariffs, label: 'Misc Tariff' };
+      case 'locations': return { data: locations, setter: setLocations, label: 'Location' };
+      case 'miscChargeTypes': return { data: miscChargeTypes, setter: setMiscChargeTypes, label: 'Misc Charge Type' };
       default: return { data: [], setter: () => {}, label: '', isComplex: false };
     }
   };
 
-  const { data, setter, label, isComplex, isRole, isUser, isContainerType, isFclTemplate } = getActiveState();
+  const { data, setter, label, isComplex, isRole, isUser, isContainerType, isCurrency, isGlCode, isService, isCsvExportTemplate, isFclTemplate, isStorageZone, isStorageRate } = getActiveState();
 
   const handleDeleteComplex = (id) => {
     if (!checkAccess('master_data', 'edit')) return showMessage("You do not have edit permissions for Master Data.");
@@ -922,7 +1027,12 @@ const MasterMaintenance = () => {
         permissions: item.permissions || generateEmptyPermissions()
       });
     } else {
-      const newId = `id-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      const newId = (activeMaster === 'glCodes' || activeMaster === 'services' || activeMaster === 'currencies') ? '' : `id-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      let tariffType = '';
+      if (activeMaster === 'masterTariffsLcl') tariffType = 'LCL';
+      if (activeMaster === 'masterTariffsTransport') tariffType = 'Transport';
+      if (activeMaster === 'masterTariffsMisc') tariffType = 'Misc';
+
       setFormData({ 
         id: newId, name: '', shortform: '', isCustomer: false, isConsignee: false, isConsignor: false, 
         isTransporter: false, isHaulier: false, isManpowerSupply: false, groupJSSTExempted: false, isLinerBroker: false, isDeclaredCompany: false,
@@ -933,6 +1043,13 @@ const MasterMaintenance = () => {
         isWarehouseOperator: false, isLogisticsOps: false,
         type: '', maxCbm: '', maxWeight: '',
         pol: '', pod: '', templateVendors: [], templateCustomers: [], items: [],
+        totalArea: 6600, deadSpaceValue: 30, deadSpaceType: '%',
+        storageServiceValue: 2000, storageServiceType: 'SQFT',
+        fulfillmentValue: 0, fulfillmentType: '%',
+        lclKivValue: 0, lclKivType: '%',
+        crossDockValue: 0, crossDockType: '%',
+        unitType: 'CBM', shortTermRate: 0, longTermRate: 0, inboundHandling: 0, outboundHandling: 0,
+        rates: [], tariffType, locationFrom: '', locationTo: '', isOutskirt: false, miscChargeTypeId: '',
         permissions: generateEmptyPermissions()
       });
     }
@@ -940,14 +1057,54 @@ const MasterMaintenance = () => {
   };
 
   const saveForm = async () => {
-    if (activeMaster === 'companies' || activeMaster === 'ports' || activeMaster === 'roles') {
+    if (activeMaster === 'companies' || activeMaster === 'ports' || activeMaster === 'roles' || activeMaster === 'currencies' || activeMaster === 'glCodes' || activeMaster === 'services' || activeMaster === 'csvExportTemplates') {
       if (!formData.name || !formData.name.trim()) return showMessage("Name is required.");
+    }
+    if (activeMaster === 'csvExportTemplates') {
+      if (!formData.integrationType) return showMessage("Integration Type is required.");
+    }
+    if (activeMaster === 'glCodes') {
+      if (!formData.id || formData.id.trim() === '') return showMessage("GL Code (ID) is required.");
+      if (!formData.type) return showMessage("Account Type is required.");
+    }
+    if (activeMaster === 'services') {
+      if (!formData.id || formData.id.trim() === '') return showMessage("Service Code (ID) is required.");
+      if (!formData.code || formData.code.trim() === '') return showMessage("Service Code is required.");
     }
     if (activeMaster === 'containerTypes') {
       if (!formData.type || !formData.type.trim()) return showMessage("Container Type is required.");
     }
     if (activeMaster === 'fclTemplates') {
       if (!formData.name || !formData.name.trim()) return showMessage("Template Name is required.");
+    }
+    if (activeMaster === 'storageZones') {
+      if (!formData.name || !formData.name.trim()) return showMessage("Zone Name is required.");
+    }
+    if (activeMaster === 'storageRates') {
+      if (!formData.name || !formData.name.trim()) return showMessage("Rate Name is required.");
+    }
+    if (activeMaster === 'locations' || activeMaster === 'miscChargeTypes') {
+      if (!formData.name || !formData.name.trim()) return showMessage("Name is required.");
+    }
+    if (activeMaster.startsWith('masterTariffs')) {
+      if (activeMaster === 'masterTariffsLcl' && (!formData.pol || !formData.pod)) return showMessage("POL and POD are required.");
+      if (activeMaster === 'masterTariffsTransport' && (!formData.locationFrom || !formData.locationTo)) return showMessage("Location From and To are required.");
+      if (activeMaster === 'masterTariffsMisc' && !formData.miscChargeTypeId) return showMessage("Misc Charge Type is required.");
+      
+      if (activeMaster === 'masterTariffsTransport') {
+        const fromLoc = locations?.find((l: any) => l.id === formData.locationFrom || l.name === formData.locationFrom);
+        const toLoc = locations?.find((l: any) => l.id === formData.locationTo || l.name === formData.locationTo);
+        formData.name = `${fromLoc ? fromLoc.name : formData.locationFrom} to ${toLoc ? toLoc.name : formData.locationTo}`;
+      } else if (!formData.name || !formData.name.trim()) {
+        if (activeMaster === 'masterTariffsLcl') {
+           formData.name = `${formData.pol} to ${formData.pod}`;
+        } else if (activeMaster === 'masterTariffsMisc') {
+           const miscType = miscChargeTypes?.find((m: any) => m.id === formData.miscChargeTypeId);
+           formData.name = `${miscType ? miscType.name : formData.miscChargeTypeId}`;
+        }
+      }
+
+      if (!formData.name || !formData.name.trim()) return showMessage("Tariff Name is required.");
     }
     if (activeMaster === 'users') {
       if (!editingItem || editingItem === 'add') formData.password = 'ABCD@1234';
@@ -960,6 +1117,8 @@ const MasterMaintenance = () => {
     }
 
     try {
+      const collectionName = activeMaster.startsWith('masterTariffs') ? 'masterTariffs' : activeMaster;
+      
       if (editingItem === 'edit') {
         if (activeMaster === 'ports') {
           const oldPort = (data || []).find(d => d.id === finalData.id);
@@ -972,10 +1131,10 @@ const MasterMaintenance = () => {
             });
           }
         }
-        await setDoc(doc(db, activeMaster, finalData.id), finalData);
+        await setDoc(doc(db, collectionName, finalData.id), finalData);
         logActivity('UPDATE', 'Master Data', finalData.id, `Updated ${label} record`);
       } else {
-        await setDoc(doc(db, activeMaster, finalData.id), finalData);
+        await setDoc(doc(db, collectionName, finalData.id), finalData);
         logActivity('CREATE', 'Master Data', finalData.id, `Created ${label} record`);
       }
       
@@ -1012,7 +1171,7 @@ const MasterMaintenance = () => {
   const updateListRow = (listName, index, field, value) => {
     const newList = [...(formData[listName] || [])];
     let val = value;
-    if (typeof val === 'string' && !['email'].includes(field)) {
+    if (typeof val === 'string' && !['email', 'dataField', 'fieldType', 'staticValue', 'headerName', 'locationId'].includes(field)) {
       val = val.toUpperCase();
     }
     newList[index] = { ...newList[index], [field]: val };
@@ -1058,6 +1217,137 @@ const MasterMaintenance = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-1">{label} Name <span className="text-red-500">*</span></label>
                 <input type="text" value={formData.name || ''} onChange={(e) => updateForm('name', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" />
               </div>
+            )}
+
+            {isCurrency && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Currency Code (ID) <span className="text-red-500">*</span></label>
+                  <input type="text" disabled={editingItem === 'edit'} value={formData.id || ''} onChange={(e) => updateForm('id', e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))} className="w-full p-2 border border-slate-300 rounded-md bg-white uppercase" placeholder="e.g. MYR" maxLength={3} />
+                  {editingItem === 'add' && <p className="text-xs text-slate-500 mt-1">This will be used as the internal document ID.</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Currency Name <span className="text-red-500">*</span></label>
+                  <input type="text" value={formData.name || ''} onChange={(e) => updateForm('name', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Malaysian Ringgit" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Exchange Rate (to Base)</label>
+                  <input type="number" step="0.0001" value={formData.rate || ''} onChange={(e) => updateForm('rate', parseFloat(e.target.value))} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. 1.0 (for base) or 4.5" />
+                  <p className="text-xs text-slate-500 mt-1">Leave 1 if it's the base currency.</p>
+                </div>
+              </>
+            )}
+
+            {isGlCode && (
+              <>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">GL Code (ID) <span className="text-red-500">*</span></label>
+                  <input type="text" disabled={editingItem === 'edit'} value={formData.id || ''} onChange={(e) => updateForm('id', e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''))} className="w-full p-2 border border-slate-300 rounded-md bg-white uppercase" placeholder="e.g. 4000-100" />
+                  {editingItem === 'add' && <p className="text-xs text-slate-500 mt-1">This is the GL chart of account code.</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Account Name <span className="text-red-500">*</span></label>
+                  <input type="text" value={formData.name || ''} onChange={(e) => updateForm('name', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Ocean Freight Income" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Account Type <span className="text-red-500">*</span></label>
+                  <select value={formData.type || ''} onChange={(e) => updateForm('type', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md bg-white">
+                    <option value="">-- Select Type --</option>
+                    <option value="REVENUE">Revenue / Income</option>
+                    <option value="EXPENSE">Expense / Cost</option>
+                    <option value="ASSET">Asset</option>
+                    <option value="LIABILITY">Liability</option>
+                    <option value="EQUITY">Equity</option>
+                  </select>
+                </div>
+              </>
+            )}
+
+            {isService && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Service Code (ID) <span className="text-red-500">*</span></label>
+                  <input type="text" disabled={editingItem === 'edit'} value={formData.code || ''} onChange={(e) => { updateForm('id', e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '')); updateForm('code', e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '')); }} className="w-full p-2 border border-slate-300 rounded-md bg-white uppercase" placeholder="e.g. OF" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Service Name <span className="text-red-500">*</span></label>
+                  <input type="text" value={formData.name || ''} onChange={(e) => updateForm('name', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Ocean Freight" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Revenue GL Code</label>
+                  <select value={formData.incomeGlCode || ''} onChange={(e) => updateForm('incomeGlCode', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md bg-white">
+                    <option value="">-- Select GL Code --</option>
+                    {(glCodes || []).map(g => <option key={g.id} value={g.id}>{g.id} - {g.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Expense GL Code</label>
+                  <select value={formData.expGlCode || ''} onChange={(e) => updateForm('expGlCode', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md bg-white">
+                    <option value="">-- Select GL Code --</option>
+                    {(glCodes || []).map(g => <option key={g.id} value={g.id}>{g.id} - {g.name}</option>)}
+                  </select>
+                </div>
+              </>
+            )}
+
+            {isCsvExportTemplate && (
+              <>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Template Name <span className="text-red-500">*</span></label>
+                  <input type="text" value={formData.name || ''} onChange={(e) => updateForm('name', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Sage 50 AP Bills" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Integration Type <span className="text-red-500">*</span></label>
+                  <select value={formData.integrationType || ''} onChange={(e) => updateForm('integrationType', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md bg-white">
+                    <option value="">-- Select Type --</option>
+                    <option value="AP">Vendor Bills (AP)</option>
+                    <option value="AR">Customer Invoices (AR)</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2 border border-slate-200 p-4 rounded bg-slate-50">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-semibold text-slate-700">CSV Columns Mapping</label>
+                    <button type="button" onClick={() => addListRow('columns', { headerName: '', fieldType: 'Data', dataField: '', staticValue: '' })} className="text-xs bg-indigo-100 text-indigo-700 font-medium px-2 py-1 rounded">+ Add Column</button>
+                  </div>
+                  {(formData.columns || []).map((col, idx) => (
+                    <div key={idx} className="flex gap-2 items-center mb-2">
+                      <div className="w-1/4">
+                        <input type="text" value={col.headerName} onChange={(e) => updateListRow('columns', idx, 'headerName', e.target.value)} placeholder="CSV Header Name" className="w-full p-1.5 text-sm border border-slate-300 rounded" />
+                      </div>
+                      <div className="w-1/4">
+                        <select value={col.fieldType} onChange={(e) => updateListRow('columns', idx, 'fieldType', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded bg-white">
+                          <option value="Data">Dynamic Data</option>
+                          <option value="Static">Static Value</option>
+                        </select>
+                      </div>
+                      <div className="w-2/4 flex space-x-2">
+                        {col.fieldType === 'Static' ? (
+                          <input type="text" value={col.staticValue || ''} onChange={(e) => updateListRow('columns', idx, 'staticValue', e.target.value)} placeholder="Static Value" className="w-full p-1.5 text-sm border border-slate-300 rounded" />
+                        ) : (
+                          <select value={col.dataField || ''} onChange={(e) => updateListRow('columns', idx, 'dataField', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded bg-white">
+                            <option value="">-- Choose Field --</option>
+                            <option value="invoiceNo">Document No</option>
+                            <option value="date">Date</option>
+                            <option value="dueDate">Due Date</option>
+                            <option value="customerId">Vendor/Customer Code</option>
+                            <option value="vendorName">Vendor/Customer Name</option>
+                            <option value="currency">Currency Code</option>
+                            <option value="exchangeRate">Exchange Rate</option>
+                            <option value="line.amount">Line Base Amt</option>
+                            <option value="line.taxAmount">Line Tax Amt</option>
+                            <option value="line.total">Line Total (Incl Tax)</option>
+                            <option value="line.amountMYR">Line Amt (Base Curr)</option>
+                            <option value="line.description">Line Description</option>
+                            <option value="line.glCode">GL Account Code</option>
+                            <option value="line.serviceCode">Service Code</option>
+                          </select>
+                        )}
+                        <button type="button" onClick={() => removeListRow('columns', idx)} className="p-1.5 text-slate-400 hover:text-red-500 bg-white rounded border border-slate-300"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
 
             {activeMaster === 'companies' && (
@@ -1134,39 +1424,41 @@ const MasterMaintenance = () => {
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <label className="block text-sm font-semibold text-slate-700">Cost Template Items</label>
-                      <button type="button" onClick={() => addListRow('items', { section: '', description: '', cost: '', costCurrency: 'USD', selling: '', sellingCurrency: 'USD' })} className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">+ Add Row</button>
+                      <button type="button" onClick={() => addListRow('items', { section: '', description: '', cost: '', costCurrency: 'MYR', selling: '', sellingCurrency: 'MYR', vendorId: '' })} className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">+ Add Row</button>
                     </div>
                     {(formData.items || []).map((item, idx) => (
-                      <div key={idx} className="flex gap-2 mb-2 items-start bg-slate-50 p-2 rounded border border-slate-200">
-                        <input type="text" placeholder="Section" value={item.section} onChange={(e) => updateListRow('items', idx, 'section', e.target.value)} className="w-1/5 p-1.5 text-sm border border-slate-300 rounded" />
-                        <input type="text" placeholder="Description" value={item.description} onChange={(e) => updateListRow('items', idx, 'description', e.target.value)} className="w-2/5 p-1.5 text-sm border border-slate-300 rounded" />
-                        <div className="w-[15%] flex rounded border border-slate-300 bg-white">
-                          <input type="text" value={item.costCurrency} onChange={(e) => updateListRow('items', idx, 'costCurrency', e.target.value.toUpperCase())} className="w-1/3 p-1.5 text-sm border-r focus:outline-none" placeholder="Curr" />
-                          <input type="number" value={item.cost} onChange={(e) => updateListRow('items', idx, 'cost', e.target.value)} className="w-2/3 p-1.5 text-sm text-right focus:outline-none" placeholder="Cost" />
+                      <div key={idx} className="flex gap-2 mb-2 items-center bg-slate-50 p-2 rounded border border-slate-200">
+                        <input type="text" placeholder="Section" value={item.section} onChange={(e) => updateListRow('items', idx, 'section', e.target.value)} className="w-[15%] p-1.5 text-sm border border-slate-300 rounded" />
+                        <select value={item.description || ''} onChange={(e) => updateListRow('items', idx, 'description', e.target.value)} className="w-[20%] p-1.5 text-sm border border-slate-300 rounded bg-white">
+                          <option value="">-- Select Service/Charge --</option>
+                          {(services || []).map(s => <option key={s.id} value={s.code}>{s.code} - {s.name}</option>)}
+                        </select>
+                        <select value={item.vendorId || ''} onChange={(e) => updateListRow('items', idx, 'vendorId', e.target.value)} className="w-[20%] p-1.5 text-sm border border-slate-300 rounded bg-white">
+                          <option value="">-- Any Vendor --</option>
+                          {(companies || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                        <div className="w-[20%] flex rounded border border-slate-300 bg-white items-center overflow-hidden">
+                          <select value={item.costCurrency} onChange={(e) => updateListRow('items', idx, 'costCurrency', e.target.value)} className="w-[45%] p-1.5 text-sm border-r focus:outline-none bg-slate-50 font-medium">
+                            <option value="MYR">MYR</option>
+                            {(currencies || []).map(c => c.id !== 'MYR' && <option key={c.id} value={c.id}>{c.id}</option>)}
+                          </select>
+                          <input type="number" value={item.cost} onChange={(e) => updateListRow('items', idx, 'cost', e.target.value)} className="w-[55%] p-1.5 text-sm text-right focus:outline-none" placeholder="Cost" />
                         </div>
-                        <div className="w-[15%] flex rounded border border-slate-300 bg-white">
-                          <input type="text" value={item.sellingCurrency} onChange={(e) => updateListRow('items', idx, 'sellingCurrency', e.target.value.toUpperCase())} className="w-1/3 p-1.5 text-sm border-r focus:outline-none" placeholder="Curr" />
-                          <input type="number" value={item.selling} onChange={(e) => updateListRow('items', idx, 'selling', e.target.value)} className="w-2/3 p-1.5 text-sm text-right focus:outline-none" placeholder="Sell" />
+                        <div className="w-[20%] flex rounded border border-slate-300 bg-white items-center overflow-hidden">
+                          <select value={item.sellingCurrency} onChange={(e) => updateListRow('items', idx, 'sellingCurrency', e.target.value)} className="w-[45%] p-1.5 text-sm border-r focus:outline-none bg-slate-50 font-medium">
+                            <option value="MYR">MYR</option>
+                            {(currencies || []).map(c => c.id !== 'MYR' && <option key={c.id} value={c.id}>{c.id}</option>)}
+                          </select>
+                          <input type="number" value={item.selling} onChange={(e) => updateListRow('items', idx, 'selling', e.target.value)} className="w-[55%] p-1.5 text-sm text-right focus:outline-none" placeholder="Sell" />
                         </div>
-                        <button type="button" onClick={() => removeListRow('items', idx)} className="p-1.5 text-red-500 hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                        <button type="button" onClick={() => removeListRow('items', idx)} className="p-1.5 text-red-500 hover:text-red-700 bg-white rounded border border-slate-200"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     ))}
                     {(formData.items || []).length === 0 && <p className="text-sm text-slate-500 italic">No cost items defined in this template.</p>}
                   </div>
                 </div>
                 <div className="md:col-span-2 space-y-4 border-t pt-4">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">Vendors (Apply to)</label>
-                        <div className="max-h-40 overflow-y-auto border border-slate-200 rounded bg-slate-50 p-2 space-y-1">
-                          {companies.filter(c => c.isTransporter || c.isHaulier || c.isWarehouseOperator || c.isLinerBroker || c.isManpowerSupply).map(c => (
-                            <label key={c.id} className="flex items-center space-x-2 text-sm cursor-pointer p-1 hover:bg-white rounded">
-                              <input type="checkbox" checked={(formData.templateVendors || []).includes(c.id)} onChange={() => toggleArrayItem('templateVendors', c.id)} className="rounded" />
-                              <span>{c.name}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
+                   <div className="grid grid-cols-1 gap-6">
                       <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-2">Customers (Apply to)</label>
                         <div className="max-h-40 overflow-y-auto border border-slate-200 rounded bg-slate-50 p-2 space-y-1">
@@ -1377,6 +1669,457 @@ const MasterMaintenance = () => {
               </>
             )}
 
+            {activeMaster === 'storageZones' && (
+              <>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Zone Name <span className="text-red-500">*</span></label>
+                  <input type="text" value={formData.name || ''} onChange={(e) => updateForm('name', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md font-bold text-lg" placeholder="e.g. Main Operations Zone"/>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Total Warehouse Area (SQFT) <span className="text-red-500">*</span></label>
+                  <input type="number" value={formData.totalArea || ''} onChange={(e) => updateForm('totalArea', parseFloat(e.target.value))} className="w-full p-2 border border-slate-300 rounded-md font-bold text-lg" />
+                </div>
+                
+                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 md:col-span-2 space-y-4">
+                  <h4 className="font-bold text-slate-800 border-b pb-2 flex justify-between">
+                    <span>Space Allocation</span>
+                    <span className="text-xs text-slate-500">Total: {formData.totalArea} SQFT</span>
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase">Deadspace (Walkway/Buffer)</label>
+                      <div className="flex mt-1">
+                        <input type="number" value={formData.deadSpaceValue} onChange={(e) => updateForm('deadSpaceValue', parseFloat(e.target.value))} className="w-2/3 p-2 border border-slate-300 rounded-l-md" />
+                        <select value={formData.deadSpaceType} onChange={(e) => updateForm('deadSpaceType', e.target.value)} className="w-1/3 p-2 border border-l-0 border-slate-300 rounded-r-md bg-slate-100">
+                          <option value="%">%</option>
+                          <option value="SQFT">SQFT</option>
+                        </select>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">Value: {formData.deadSpaceType === '%' ? ((formData.totalArea * formData.deadSpaceValue) / 100).toFixed(2) : formData.deadSpaceValue} SQFT</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase">Storage Service Zone</label>
+                      <div className="flex mt-1">
+                        <input type="number" value={formData.storageServiceValue} onChange={(e) => updateForm('storageServiceValue', parseFloat(e.target.value))} className="w-2/3 p-2 border border-slate-300 rounded-l-md" />
+                        <select value={formData.storageServiceType} onChange={(e) => updateForm('storageServiceType', e.target.value)} className="w-1/3 p-2 border border-l-0 border-slate-300 rounded-r-md bg-slate-100">
+                          <option value="%">%</option>
+                          <option value="SQFT">SQFT</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase">Fulfillment Storage</label>
+                      <div className="flex mt-1">
+                        <input type="number" value={formData.fulfillmentValue} onChange={(e) => updateForm('fulfillmentValue', parseFloat(e.target.value))} className="w-2/3 p-2 border border-slate-300 rounded-l-md" />
+                        <select value={formData.fulfillmentType} onChange={(e) => updateForm('fulfillmentType', e.target.value)} className="w-1/3 p-2 border border-l-0 border-slate-300 rounded-r-md bg-slate-100">
+                          <option value="%">%</option>
+                          <option value="SQFT">SQFT</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase">LCL KIV Space</label>
+                      <div className="flex mt-1">
+                        <input type="number" value={formData.lclKivValue} onChange={(e) => updateForm('lclKivValue', parseFloat(e.target.value))} className="w-2/3 p-2 border border-slate-300 rounded-l-md" />
+                        <select value={formData.lclKivType} onChange={(e) => updateForm('lclKivType', e.target.value)} className="w-1/3 p-2 border border-l-0 border-slate-300 rounded-r-md bg-slate-100">
+                          <option value="%">%</option>
+                          <option value="SQFT">SQFT</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase">Cross Docking Space</label>
+                      <div className="flex mt-1">
+                        <input type="number" value={formData.crossDockValue} onChange={(e) => updateForm('crossDockValue', parseFloat(e.target.value))} className="w-2/3 p-2 border border-slate-300 rounded-l-md" />
+                        <select value={formData.crossDockType} onChange={(e) => updateForm('crossDockType', e.target.value)} className="w-1/3 p-2 border border-l-0 border-slate-300 rounded-r-md bg-slate-100">
+                          <option value="%">%</option>
+                          <option value="SQFT">SQFT</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
+                    <h5 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 border-b pb-2">Space Allocation Breakdown</h5>
+                    {(() => {
+                      const total = parseFloat(formData.totalArea) || 0;
+                      const deadSpace = formData.deadSpaceType === '%' ? (total * (parseFloat(formData.deadSpaceValue) || 0) / 100) : (parseFloat(formData.deadSpaceValue) || 0);
+                      const balance = Math.max(0, total - deadSpace);
+                      
+                      const calcValue = (val, type) => type === '%' ? (balance * (parseFloat(val) || 0) / 100) : (parseFloat(val) || 0);
+                      
+                      const storage = calcValue(formData.storageServiceValue, formData.storageServiceType);
+                      const fulfillment = calcValue(formData.fulfillmentValue, formData.fulfillmentType);
+                      const kiv = calcValue(formData.lclKivValue, formData.lclKivType);
+                      const cross = calcValue(formData.crossDockValue, formData.crossDockType);
+                      
+                      const totalAllocated = storage + fulfillment + kiv + cross;
+                      const leftover = balance - totalAllocated;
+
+                      const Row = ({ label, val, sub = null, isTotal = false, isHighlight = false }) => (
+                        <div className={`flex justify-between py-1.5 ${isTotal ? 'border-t mt-2 pt-2 border-slate-200' : ''}`}>
+                          <div className="flex flex-col">
+                            <span className={`text-sm ${isTotal ? 'font-bold text-slate-800' : 'text-slate-500'}`}>{label}</span>
+                            {sub && <span className="text-[10px] text-slate-400 leading-none">{sub}</span>}
+                          </div>
+                          <div className={`text-sm font-mono font-bold ${isHighlight ? (val < 0 ? 'text-red-600' : 'text-emerald-600') : (isTotal ? 'text-slate-900' : 'text-slate-700')}`}>
+                            {val.toFixed(2)} SQFT
+                          </div>
+                        </div>
+                      );
+
+                      return (
+                        <div className="space-y-1">
+                          <Row label="Total Warehouse Area" val={total} />
+                          <Row label="Deadspace / Walkways" val={deadSpace} sub={`${formData.deadSpaceValue}${formData.deadSpaceType}`} />
+                          <div className="my-2 py-1 px-3 bg-slate-50 rounded text-[11px] font-bold text-slate-500 flex justify-between">
+                            <span>Balance for Operations</span>
+                            <span>{balance.toFixed(2)} SQFT</span>
+                          </div>
+                          <Row label="Storage Service" val={storage} sub={`${formData.storageServiceValue}${formData.storageServiceType}`} />
+                          <Row label="Fulfillment Space" val={fulfillment} sub={`${formData.fulfillmentValue}${formData.fulfillmentType}`} />
+                          <Row label="LCL KIV (Storage)" val={kiv} sub={`${formData.lclKivValue}${formData.lclKivType}`} />
+                          <Row label="Cross Docking" val={cross} sub={`${formData.crossDockValue}${formData.crossDockType}`} />
+                          
+                          <Row label="Total Allocated" val={totalAllocated} isTotal={true} />
+                          <Row label="Unallocated / Buffer" val={leftover} isHighlight={true} />
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeMaster === 'storageRates' && (
+              <>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Rate Name / Category <span className="text-red-500">*</span></label>
+                  <input type="text" value={formData.name || ''} onChange={(e) => updateForm('name', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. General Storage Rate" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Customer (Optional)</label>
+                  <select value={formData.customerId || ''} onChange={(e) => updateForm('customerId', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md">
+                    <option value="">-- Apply to All --</option>
+                    {(companies || []).filter(c => c.isCustomer).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Base Unit Type <span className="text-red-500">*</span></label>
+                  <select value={formData.unitType || 'CBM'} onChange={(e) => updateForm('unitType', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md">
+                    <option value="CBM">CBM</option>
+                    <option value="SQFT">SQFT</option>
+                    <option value="PALLET">PALLET</option>
+                    <option value="UNIT">UNIT/CARTON</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4 md:col-span-2 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase">Short Term Rate (&le; 6 Months)</label>
+                    <div className="relative mt-1">
+                      <span className="absolute left-3 top-2 text-slate-400">RM</span>
+                      <input type="number" value={formData.shortTermRate} onChange={(e) => updateForm('shortTermRate', parseFloat(e.target.value))} className="w-full pl-10 p-2 border border-slate-300 rounded-md" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase">Long Term Rate (&gt; 6 Months)</label>
+                    <div className="relative mt-1">
+                      <span className="absolute left-3 top-2 text-slate-400">RM</span>
+                      <input type="number" value={formData.longTermRate} onChange={(e) => updateForm('longTermRate', parseFloat(e.target.value))} className="w-full pl-10 p-2 border border-slate-300 rounded-md" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase">Inbound Handling (per unit)</label>
+                    <div className="relative mt-1">
+                      <span className="absolute left-3 top-2 text-slate-400">RM</span>
+                      <input type="number" value={formData.inboundHandling} onChange={(e) => updateForm('inboundHandling', parseFloat(e.target.value))} className="w-full pl-10 p-2 border border-slate-300 rounded-md" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase">Outbound Handling (per unit)</label>
+                    <div className="relative mt-1">
+                      <span className="absolute left-3 top-2 text-slate-400">RM</span>
+                      <input type="number" value={formData.outboundHandling} onChange={(e) => updateForm('outboundHandling', parseFloat(e.target.value))} className="w-full pl-10 p-2 border border-slate-300 rounded-md" />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeMaster.startsWith('masterTariffs') && (
+              <>
+                {activeMaster !== 'masterTariffsTransport' && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-slate-800 mb-1">Tariff Name</label>
+                    <input type="text" value={formData.name || ''} onChange={(e) => updateForm('name', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="Leave blank to auto-generate based on scope" />
+                  </div>
+                )}
+                
+                {(activeMaster === 'masterTariffsLcl' || activeMaster === 'masterTariffsMisc') && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">POL {activeMaster === 'masterTariffsLcl' && <span className="text-red-500">*</span>}</label>
+                      <select value={formData.pol || ''} onChange={(e) => updateForm('pol', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md">
+                        <option value="">-- Select POL --</option>
+                        {(ports || []).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">POD {activeMaster === 'masterTariffsLcl' && <span className="text-red-500">*</span>}</label>
+                      <select value={formData.pod || ''} onChange={(e) => updateForm('pod', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md">
+                        <option value="">-- Select POD --</option>
+                        {(ports || []).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {(activeMaster === 'masterTariffsTransport') && (
+                  <>
+                    <datalist id="location_list_master">
+                      {(locations || []).map(l => <option key={l.id} value={l.name}>{l.name} {l.isOutskirt ? '(Outskirt)' : ''}</option>)}
+                    </datalist>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Location From <span className="text-red-500">*</span></label>
+                      <input 
+                        list="location_list_master" 
+                        value={locations?.find(l => l.id === formData.locationFrom)?.name || formData.locationFrom || ''} 
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const match = locations.find(l => l.name === val);
+                          updateForm('locationFrom', match ? match.name : val);
+                        }} 
+                        className="w-full p-2 border border-slate-300 rounded-md" 
+                        placeholder="Search Location..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Location To <span className="text-red-500">*</span></label>
+                      <input 
+                        list="location_list_master" 
+                        value={locations?.find(l => l.id === formData.locationTo)?.name || formData.locationTo || ''} 
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const match = locations.find(l => l.name === val);
+                          updateForm('locationTo', match ? match.name : val);
+                        }} 
+                        className="w-full p-2 border border-slate-300 rounded-md" 
+                        placeholder="Search Location..."
+                      />
+                    </div>
+                  </>
+                )}
+
+                {activeMaster === 'masterTariffsMisc' && (
+                  <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Misc Charge Type <span className="text-red-500">*</span></label>
+                      <select value={formData.miscChargeTypeId || ''} onChange={(e) => updateForm('miscChargeTypeId', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md">
+                        <option value="">-- Select Type --</option>
+                        {(miscChargeTypes || []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                      </select>
+                  </div>
+                )}
+
+                <div className="md:col-span-2 mt-4 space-y-4">
+                  <div className="flex justify-between items-center border-b pb-2">
+                    <h4 className="font-semibold text-slate-800">Rate Groupings</h4>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        const newRate = { id: `rate-${Date.now()}`, chargeType: formData.tariffType === 'LCL' ? 'LCL Freight' : formData.tariffType === 'Transport' ? 'Transport Fee' : 'Misc', rate: 0, currency: 'MYR', unit: 'CBM', locationFrom: '', locationTo: '', customerIds: [], isPickup: formData.tariffType === 'Transport', isDelivery: formData.tariffType === 'Transport' };
+                        updateForm('rates', [...(formData.rates || []), newRate]);
+                      }}
+                      className="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100 flex items-center space-x-1"
+                    >
+                      <Plus className="w-4 h-4" /> <span>Add Rate Group</span>
+                    </button>
+                  </div>
+                  
+                  {(formData.rates || []).map((rateItem, rateIdx) => (
+                    <div key={rateItem.id || rateIdx} className="p-4 border border-slate-200 rounded-lg bg-slate-50 space-y-3 relative">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          const newRates = [...formData.rates];
+                          newRates.splice(rateIdx, 1);
+                          updateForm('rates', newRates);
+                        }}
+                        className="absolute top-2 right-2 text-slate-400 hover:text-red-500"
+                        title="Remove Rate Group"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pr-6">
+                        {activeMaster === 'masterTariffsTransport' && (
+                          <div className="md:col-span-1 flex flex-col justify-center gap-2 mt-4 border-r border-slate-200">
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                checked={rateItem.isPickup ?? true}
+                                onChange={(e) => {
+                                  const newRates = [...formData.rates];
+                                  newRates[rateIdx].isPickup = e.target.checked;
+                                  updateForm('rates', newRates);
+                                }}
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
+                              />
+                              <span className="text-xs font-semibold text-slate-700">Is Pickup</span>
+                            </label>
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                checked={rateItem.isDelivery ?? true}
+                                onChange={(e) => {
+                                  const newRates = [...formData.rates];
+                                  newRates[rateIdx].isDelivery = e.target.checked;
+                                  updateForm('rates', newRates);
+                                }}
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
+                              />
+                              <span className="text-xs font-semibold text-slate-700">Is Delivery</span>
+                            </label>
+                          </div>
+                        )}
+                        <div className={activeMaster === 'masterTariffsTransport' ? 'col-span-1' : ''}>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Charge Type</label>
+                          <select 
+                            value={rateItem.chargeType || ''} 
+                            onChange={(e) => {
+                              const newRates = [...formData.rates];
+                              newRates[rateIdx].chargeType = e.target.value;
+                              updateForm('rates', newRates);
+                            }} 
+                            className="w-full p-2 text-sm border border-slate-300 rounded-md bg-white"
+                          >
+                            <option value="">-- Select Charge Type --</option>
+                            {(services || []).map(s => <option key={s.id} value={s.code}>{s.code} - {s.name}</option>)}
+                          </select>
+                        </div>
+                        <div className={activeMaster === 'masterTariffsTransport' ? 'col-span-1' : ''}>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Currency</label>
+                          <select 
+                            value={rateItem.currency || 'MYR'} 
+                            onChange={(e) => {
+                              const newRates = [...formData.rates];
+                              newRates[rateIdx].currency = e.target.value;
+                              updateForm('rates', newRates);
+                            }} 
+                            className="w-full p-2 text-sm border border-slate-300 rounded-md"
+                          >
+                            <option value="MYR">MYR</option>
+                            {(currencies || []).map(c => c.id !== 'MYR' && <option key={c.id} value={c.id}>{c.id}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Rate / Amount</label>
+                          <input 
+                            type="number" step="0.01" 
+                            value={rateItem.rate || 0} 
+                            onChange={(e) => {
+                              const newRates = [...formData.rates];
+                              newRates[rateIdx].rate = parseFloat(e.target.value) || 0;
+                              updateForm('rates', newRates);
+                            }} 
+                            className="w-full p-2 text-sm border border-slate-300 rounded-md" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Unit</label>
+                          <select 
+                            value={rateItem.unit || 'CBM'} 
+                            onChange={(e) => {
+                              const newRates = [...formData.rates];
+                              newRates[rateIdx].unit = e.target.value;
+                              updateForm('rates', newRates);
+                            }} 
+                            className="w-full p-2 text-sm border border-slate-300 rounded-md"
+                          >
+                            <option value="CBM">Per CBM</option>
+                            <option value="KG">Per KG</option>
+                            <option value="Trip">Per Trip / Load</option>
+                            <option value="Pallet">Per Pallet</option>
+                            <option value="Lumpsum">Lumpsum (Flat)</option>
+                          </select>
+                        </div>
+                      </div>
+                      
+                      {/* Customer Selection Multiple */}
+                      <div className="mt-3">
+                        <label className="block text-xs font-medium text-slate-700 mb-2">Assigned Customers</label>
+                        <div className="h-32 overflow-y-auto border border-slate-200 rounded-md p-2 bg-white flex flex-col gap-1">
+                          {(companies || [])
+                            .filter(c => c.isCustomer)
+                            .map(c => {
+                              const isChecked = (rateItem.customerIds || []).includes(c.id);
+                              return (
+                                <label key={c.id} className="flex items-center space-x-2 text-sm p-1 hover:bg-slate-50 cursor-pointer rounded">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      const newRates = [...formData.rates];
+                                      let currIds = [...(newRates[rateIdx].customerIds || [])];
+                                      if (e.target.checked) {
+                                        if (!currIds.includes(c.id)) currIds.push(c.id);
+                                      } else {
+                                        currIds = currIds.filter(id => id !== c.id);
+                                      }
+                                      newRates[rateIdx].customerIds = currIds;
+                                      updateForm('rates', newRates);
+                                    }}
+                                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
+                                  />
+                                  <span>{c.name}</span>
+                                </label>
+                              );
+                            })}
+                          {((companies || []).filter(c => c.isCustomer).length === 0) && (
+                            <div className="text-xs text-slate-500 italic p-2">No customers found. Please add a customer company first.</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {(!formData.rates || formData.rates.length === 0) && (
+                    <div className="text-center p-6 border-2 border-dashed border-slate-200 rounded-lg text-slate-500">
+                      <p className="text-sm">No rate groupings added yet.</p>
+                      <p className="text-xs mt-1">Add a group to define charges and assign customers.</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {activeMaster === 'locations' && (
+              <>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Location Name <span className="text-red-500">*</span></label>
+                  <input type="text" value={formData.name || ''} onChange={(e) => updateForm('name', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Klang Valley" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="flex items-center space-x-2 cursor-pointer mt-2">
+                    <input type="checkbox" checked={formData.isOutskirt || false} onChange={(e) => updateForm('isOutskirt', e.target.checked)} className="rounded border-slate-300 text-blue-600" />
+                    <span className="text-sm font-medium text-slate-700">Outskirt Area</span>
+                  </label>
+                  <p className="text-xs text-slate-500 ml-6 mt-1">Check this if the location applies outskirt surcharges.</p>
+                </div>
+              </>
+            )}
+
+            {activeMaster === 'miscChargeTypes' && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Misc Charge Name <span className="text-red-500">*</span></label>
+                <input type="text" value={formData.name || ''} onChange={(e) => updateForm('name', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Forklift Fee, Overtime Charge" />
+              </div>
+            )}
+
             {activeMaster === 'ports' && (
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Country</label>
@@ -1463,6 +2206,13 @@ const MasterMaintenance = () => {
                         </select>
                       </div>
                       <div className="md:col-span-2 pt-2 border-t border-slate-200 mt-2"><p className="text-xs font-semibold text-slate-500 mb-2">Location Contact details</p></div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Pricing / Tariff Location Area</label>
+                        <select value={da.locationId || ''} onChange={(e) => updateListRow('deliveryAddresses', idx, 'locationId', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded-md">
+                          <option value="">-- Select Location --</option>
+                          {(locations || []).map((l: any) => <option key={l.id} value={l.id}>{l.name} {l.isOutskirt ? '(Outskirt)' : ''}</option>)}
+                        </select>
+                      </div>
                       <div><input type="text" placeholder="PIC Name" value={da.picName || ''} onChange={(e) => updateListRow('deliveryAddresses', idx, 'picName', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded-md" /></div>
                       <div><input type="text" placeholder="Contact Number" value={da.contactNumber || ''} onChange={(e) => updateListRow('deliveryAddresses', idx, 'contactNumber', e.target.value)} disabled={da.isMainAddress} className="w-full p-1.5 text-sm border border-slate-300 rounded-md disabled:bg-slate-100" /></div>
                       <div className="md:col-span-2"><input type="email" placeholder="Email Address" value={da.email || ''} onChange={(e) => updateListRow('deliveryAddresses', idx, 'email', e.target.value)} disabled={da.isMainAddress} className="w-full p-1.5 text-sm border border-slate-300 rounded-md disabled:bg-slate-100" /></div>
@@ -1498,6 +2248,13 @@ const MasterMaintenance = () => {
                         </select>
                       </div>
                       <div className="md:col-span-2 pt-2 border-t border-slate-200 mt-2"><p className="text-xs font-semibold text-slate-500 mb-2">Location Contact details</p></div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Pricing / Tariff Location Area</label>
+                        <select value={da.locationId || ''} onChange={(e) => updateListRow('pickupAddresses', idx, 'locationId', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded-md">
+                          <option value="">-- Select Location --</option>
+                          {(locations || []).map((l: any) => <option key={l.id} value={l.id}>{l.name} {l.isOutskirt ? '(Outskirt)' : ''}</option>)}
+                        </select>
+                      </div>
                       <div><input type="text" placeholder="PIC Name" value={da.picName || ''} onChange={(e) => updateListRow('pickupAddresses', idx, 'picName', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded-md" /></div>
                       <div><input type="text" placeholder="Contact Number" value={da.contactNumber || ''} onChange={(e) => updateListRow('pickupAddresses', idx, 'contactNumber', e.target.value)} disabled={da.isMainAddress} className="w-full p-1.5 text-sm border border-slate-300 rounded-md disabled:bg-slate-100" /></div>
                       <div className="md:col-span-2"><input type="email" placeholder="Email Address" value={da.email || ''} onChange={(e) => updateListRow('pickupAddresses', idx, 'email', e.target.value)} disabled={da.isMainAddress} className="w-full p-1.5 text-sm border border-slate-300 rounded-md disabled:bg-slate-100" /></div>
@@ -1571,10 +2328,34 @@ const MasterMaintenance = () => {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <h2 className="text-2xl font-bold text-slate-800">Master Data Maintenance</h2>
-      <div className="flex space-x-2 border-b border-slate-200 pb-2 overflow-x-auto">
-        {[{ id: 'companies', name: 'Companies (Partners)' }, { id: 'ports', name: 'Ports (POL/POD)' }, { id: 'roles', name: 'Roles' }, { id: 'users', name: 'System Users' }, { id: 'warehouses', name: 'Warehouses' }, { id: 'containerTypes', name: 'Container Types' }, { id: 'fclTemplates', name: 'FCL Cost Templates' }].map(tab => (
-          <button key={tab.id} onClick={() => { setActiveMaster(tab.id); setEditingItem(null); }} className={`px-4 py-2 rounded-t-lg font-medium text-sm whitespace-nowrap transition-colors ${activeMaster === tab.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{tab.name}</button>
-        ))}
+      <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex space-x-2 border-b border-slate-200 pb-2 overflow-x-auto mb-2">
+          {masterCategories.map(cat => (
+            <button 
+              key={cat.id} 
+              onClick={() => {
+                setActiveCategory(cat.id);
+                setActiveMaster(cat.items[0].id);
+                setEditingItem(null);
+                setSearch('');
+              }} 
+              className={`px-4 py-2 rounded-t-lg font-medium whitespace-nowrap text-sm border-b-2 transition-colors ${activeCategory === cat.id ? 'border-blue-600 text-blue-700 bg-blue-50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+        <div className="flex space-x-2 overflow-x-auto pt-2 pl-2">
+          {masterCategories.find(c => c.id === activeCategory)?.items.map(m => (
+            <button 
+              key={m.id} 
+              onClick={() => { setActiveMaster(m.id); setEditingItem(null); setSearch(''); }} 
+              className={`px-4 py-1.5 rounded-full font-medium whitespace-nowrap text-xs border transition-colors ${activeMaster === m.id ? 'border-blue-600 text-blue-700 bg-blue-100 shadow-sm' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50 border-slate-100 bg-slate-50'}`}
+            >
+              {m.name}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
         <div className="flex justify-between items-center mb-6 border-b pb-4">
@@ -1587,8 +2368,12 @@ const MasterMaintenance = () => {
         <table className="w-full text-left border border-slate-200 rounded-lg overflow-hidden">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
-              <th className="p-3 text-sm font-semibold">{activeMaster === 'users' ? 'Username' : (activeMaster === 'containerTypes' ? 'Container Type' : label)}</th>
+              <th className="p-3 text-sm font-semibold">{activeMaster === 'users' ? 'Username' : (activeMaster === 'containerTypes' ? 'Container Type' : activeMaster === 'currencies' ? 'Currency Code' : activeMaster === 'glCodes' ? 'GL Code' : activeMaster === 'services' ? 'Service Code' : activeMaster === 'csvExportTemplates' ? 'Export Template' : label)}</th>
               {activeMaster === 'companies' && <th className="p-3 text-sm font-semibold">Roles</th>}
+              {activeMaster === 'currencies' && <th className="p-3 text-sm font-semibold">Name / Exchange Rate</th>}
+              {activeMaster === 'glCodes' && <th className="p-3 text-sm font-semibold">Account Name / Type</th>}
+              {activeMaster === 'services' && <th className="p-3 text-sm font-semibold">Name / GL Code Mapping</th>}
+              {activeMaster === 'csvExportTemplates' && <th className="p-3 text-sm font-semibold">Integration Type / Columns</th>}
               {activeMaster === 'ports' && <th className="p-3 text-sm font-semibold">Details</th>}
               {activeMaster === 'fclTemplates' && <th className="p-3 text-sm font-semibold">POL / POD</th>}
               {activeMaster === 'users' && <th className="p-3 text-sm font-semibold">Assigned Role</th>}
@@ -1597,6 +2382,11 @@ const MasterMaintenance = () => {
               {activeMaster === 'warehouses' && <th className="p-3 text-sm font-semibold">Status</th>}
               {activeMaster === 'containerTypes' && <th className="p-3 text-sm font-semibold">Max CBM</th>}
               {activeMaster === 'containerTypes' && <th className="p-3 text-sm font-semibold">Max Weight (kg)</th>}
+              {activeMaster === 'storageZones' && <th className="p-3 text-sm font-semibold">Total Area</th>}
+              {activeMaster === 'storageRates' && <th className="p-3 text-sm font-semibold">Rates (Short/Long)</th>}
+              {activeMaster.startsWith('masterTariffs') && <th className="p-3 text-sm font-semibold">Scope</th>}
+              {activeMaster.startsWith('masterTariffs') && <th className="p-3 text-sm font-semibold">Charges</th>}
+              {activeMaster === 'locations' && <th className="p-3 text-sm font-semibold">Is Outskirt?</th>}
               {checkAccess('master_data', 'edit') && <th className="p-3 text-sm font-semibold w-32 text-center">Act</th>}
             </tr>
           </thead>
@@ -1605,8 +2395,17 @@ const MasterMaintenance = () => {
               if (!item) return null;
               return (
               <tr key={item.id || idx} className="hover:bg-slate-50">
-                <td className="p-3 text-sm font-medium">{activeMaster === 'users' ? item.username : (activeMaster === 'containerTypes' ? item.type : item.name)}</td>
+                <td className="p-3 text-sm font-medium">
+                  {activeMaster === 'users' ? item.username : 
+                   (activeMaster === 'containerTypes' ? item.type : item.name)}
+                </td>
                 
+                {activeMaster === 'locations' && (
+                  <td className="p-3 text-sm text-slate-600">
+                    {item.isOutskirt ? <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-bold">Yes (Outskirt)</span> : 'No'}
+                  </td>
+                )}
+
                 {activeMaster === 'companies' && (
                   <td className="p-3 text-xs flex gap-1 flex-wrap">
                     {item.isCustomer && <span className="bg-blue-100 text-blue-700 px-1 rounded">CUST</span>}
@@ -1624,6 +2423,34 @@ const MasterMaintenance = () => {
                   <td className="p-3 text-sm text-slate-600">
                     {item.portName ? <span className="font-semibold block">{item.portName}</span> : null}
                     {item.country || '-'}
+                  </td>
+                )}
+                {activeMaster === 'currencies' && (
+                  <td className="p-3 text-sm text-slate-600">
+                    {item.name} <span className="ml-2 font-mono text-xs text-indigo-600 bg-indigo-50 px-1 rounded border border-indigo-100">Rate: {item.rate || 1.0}</span>
+                  </td>
+                )}
+                {activeMaster === 'glCodes' && (
+                  <td className="p-3 text-sm text-slate-600">
+                    {item.name}
+                    <span className={`ml-2 text-xs font-bold px-2 py-0.5 rounded ${item.type === 'REVENUE' ? 'bg-green-100 text-green-700' : item.type === 'EXPENSE' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
+                      {item.type}
+                    </span>
+                  </td>
+                )}
+                {activeMaster === 'services' && (
+                  <td className="p-3 text-sm text-slate-600">
+                    <span className="font-semibold">{item.name}</span>
+                    <div className="mt-1 flex gap-2">
+                       {item.incomeGlCode && <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-1 rounded">Rev: {item.incomeGlCode}</span>}
+                       {item.expGlCode && <span className="text-xs bg-red-50 text-red-700 border border-red-200 px-1 rounded">Exp: {item.expGlCode}</span>}
+                    </div>
+                  </td>
+                )}
+                {activeMaster === 'csvExportTemplates' && (
+                  <td className="p-3 text-sm text-slate-600">
+                    <span className="font-semibold">{item.integrationType === 'AP' ? 'Vendor Bills (AP)' : 'Customer Invoices (AR)'}</span>
+                    <span className="ml-2 text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{item.columns?.length || 0} columns</span>
                   </td>
                 )}
                 {activeMaster === 'fclTemplates' && (
@@ -1661,6 +2488,57 @@ const MasterMaintenance = () => {
                   <td className="p-3 text-sm text-slate-600">
                     {item.maxWeight || '-'}
                   </td>
+                )}
+                {activeMaster === 'storageZones' && (
+                  <td className="p-3 text-sm text-slate-600 font-semibold">
+                    {item.totalArea} SQFT
+                  </td>
+                )}
+                {activeMaster === 'storageRates' && (
+                  <td className="p-3 text-sm text-slate-600">
+                    RM {item.shortTermRate}/{item.longTermRate} per {item.unitType}
+                  </td>
+                )}
+                {activeMaster.startsWith('masterTariffs') && (
+                  <>
+                    <td className="p-3 text-sm text-slate-600">
+                      <div className="text-xs text-slate-800 font-semibold mb-1">
+                        {(activeMaster === 'masterTariffsLcl' || activeMaster === 'masterTariffsMisc') && (
+                          <>{item.pol || 'Any'} &rarr; {item.pod || 'Any'}</>
+                        )}
+                        {(activeMaster === 'masterTariffsTransport') && (
+                          <>{locations?.find(l => l.id === item.locationFrom || l.name === item.locationFrom)?.name || item.locationFrom || 'Any'} &rarr; {locations?.find(l => l.id === item.locationTo || l.name === item.locationTo)?.name || item.locationTo || 'Any'}</>
+                        )}
+                      </div>
+                      {activeMaster === 'masterTariffsMisc' && (
+                        <div className="text-xs text-indigo-600 font-semibold mb-1">
+                          Type: {miscChargeTypes?.find(m => m.id === item.miscChargeTypeId)?.name || 'Unknown'}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-1">
+                         {Array.from(new Set((item.rates || []).flatMap(r => r.customerIds || []))).map(cid => {
+                            const c = companies?.find(c => c.id === cid);
+                            return <span key={cid} className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-xs border border-blue-100">{c ? c.name : cid}</span>;
+                         })}
+                         {(!item.rates || item.rates.length === 0) && (
+                           <span className="text-xs text-slate-400 italic">No customers assigned</span>
+                         )}
+                      </div>
+                    </td>
+                    <td className="p-3 text-sm text-slate-600 space-y-1">
+                      {(item.rates || []).map((r, i) => (
+                         <div key={i} className="text-xs border-b border-slate-100 pb-1 mb-1 last:border-0 last:mb-0 last:pb-0">
+                           <span className="font-semibold">{r.chargeType}</span>: {r.currency} {parseFloat(r.rate || 0).toFixed(2)} / {r.unit}
+                           {activeMaster === 'masterTariffsTransport' && (
+                             <div className="flex gap-1 mt-1">
+                               {r.isPickup && <span className="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Pickup</span>}
+                               {r.isDelivery && <span className="bg-green-100 text-green-800 px-1 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Delivery</span>}
+                             </div>
+                           )}
+                         </div>
+                      ))}
+                    </td>
+                  </>
                 )}
 
                 {checkAccess('master_data', 'edit') && (
@@ -1733,14 +2611,49 @@ const ActivityLogViewer = () => {
     setEditCommercialInvoiceId
   } = React.useContext(AppContext);
   const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [sortBy, setSortBy] = useState('date');
+  const [sortDesc, setSortDesc] = useState(true);
 
   if (!checkAccess('activity_logs', 'view')) return <div className="p-8 text-center text-slate-500">You do not have permission to view Activity Logs.</div>;
 
-  const filteredLogs = (activityLogs || []).filter(log => 
-    Object.values(log).some(val => 
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortDesc(!sortDesc);
+    } else {
+      setSortBy(field);
+      setSortDesc(false);
+    }
+  };
+
+  let filteredLogs = (activityLogs || []).filter(log => {
+    let matchSearch = Object.values(log).some(val => 
       String(val).toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
+    );
+    if (!matchSearch) return false;
+    
+    if (startDate && new Date(log.date) < new Date(startDate)) return false;
+    if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (new Date(log.date) > end) return false;
+    }
+    return true;
+  });
+
+  filteredLogs = filteredLogs.sort((a, b) => {
+    let valA = a[sortBy] || '';
+    let valB = b[sortBy] || '';
+    if (sortBy === 'date') {
+       valA = new Date(a.date).getTime();
+       valB = new Date(b.date).getTime();
+    }
+    
+    if (valA < valB) return sortDesc ? 1 : -1;
+    if (valA > valB) return sortDesc ? -1 : 1;
+    return 0;
+  });
 
   const handleNavigate = (log) => {
     if (!log.recordId) return;
@@ -1787,22 +2700,32 @@ const ActivityLogViewer = () => {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 border-b border-slate-200 pb-4">
         <h2 className="text-2xl font-bold text-slate-800">System Activity Logs</h2>
-        <div className="relative w-64">
-           <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-           <input type="text" placeholder="Search logs..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
+        <div className="flex flex-wrap items-center gap-3">
+           <div className="flex items-center space-x-2">
+             <label className="text-xs font-semibold uppercase text-slate-500">From:</label>
+             <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="px-3 py-1.5 border border-slate-300 rounded text-sm"/>
+           </div>
+           <div className="flex items-center space-x-2">
+             <label className="text-xs font-semibold uppercase text-slate-500">To:</label>
+             <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="px-3 py-1.5 border border-slate-300 rounded text-sm"/>
+           </div>
+           <div className="relative w-64">
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+              <input type="text" placeholder="Search logs..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-1.5 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm" />
+           </div>
         </div>
       </div>
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <table className="w-full text-left">
-          <thead className="bg-slate-50 border-b border-slate-200">
+          <thead className="bg-slate-100 border-b border-slate-200">
             <tr>
-              <th className="p-4 text-sm font-semibold text-slate-700">Date/Time</th>
-              <th className="p-4 text-sm font-semibold text-slate-700">User</th>
-              <th className="p-4 text-sm font-semibold text-slate-700">Module</th>
-              <th className="p-4 text-sm font-semibold text-slate-700">Action</th>
-              <th className="p-4 text-sm font-semibold text-slate-700">Record ID</th>
+              <th className="p-4 text-sm font-semibold text-slate-700 cursor-pointer hover:bg-slate-200" onClick={() => handleSort('date')}>Date/Time {sortBy === 'date' && (sortDesc ? '▼' : '▲')}</th>
+              <th className="p-4 text-sm font-semibold text-slate-700 cursor-pointer hover:bg-slate-200" onClick={() => handleSort('username')}>User {sortBy === 'username' && (sortDesc ? '▼' : '▲')}</th>
+              <th className="p-4 text-sm font-semibold text-slate-700 cursor-pointer hover:bg-slate-200" onClick={() => handleSort('module')}>Module {sortBy === 'module' && (sortDesc ? '▼' : '▲')}</th>
+              <th className="p-4 text-sm font-semibold text-slate-700 cursor-pointer hover:bg-slate-200" onClick={() => handleSort('action')}>Action {sortBy === 'action' && (sortDesc ? '▼' : '▲')}</th>
+              <th className="p-4 text-sm font-semibold text-slate-700 cursor-pointer hover:bg-slate-200" onClick={() => handleSort('recordId')}>Record ID {sortBy === 'recordId' && (sortDesc ? '▼' : '▲')}</th>
               <th className="p-4 text-sm font-semibold text-slate-700">Details</th>
             </tr>
           </thead>
@@ -2132,8 +3055,8 @@ const PickupForm = () => {
   const [formData, setFormData] = useState({
     id: '', date: new Date().toISOString().split('T')[0],
     customerId: '', customerName: '',
-    consignorId: '', consignorName: '', pickupAddress: '', picContact: '',
-    consigneeId: '', consigneeName: '', dropOffCompanyId: '', dropOffAddress: '', dropOffContact: '',
+    consignorId: '', consignorName: '', pickupAddress: '', pickupLocationId: '', picContact: '',
+    consigneeId: '', consigneeName: '', dropOffCompanyId: '', dropOffAddress: '', dropOffLocationId: '', dropOffContact: '',
     pickupPartyId: '', pickupPartyName: '',
     truckDetails: '', driverContact: '', driverIC: '',
     linkedSid: '', remarks: '',
@@ -2337,6 +3260,7 @@ const PickupForm = () => {
                       setFormData(prev => ({ 
                         ...prev, 
                         pickupAddress: formatAddress(match),
+                        pickupLocationId: match.locationId || '',
                         picContact: newPicContact || prev.picContact
                       }));
                       e.target.value = '';
@@ -2395,6 +3319,7 @@ const PickupForm = () => {
                       setFormData(prev => ({ 
                         ...prev, 
                         dropOffAddress: formatAddress(match),
+                        dropOffLocationId: match.locationId || '',
                         dropOffContact: newDropOffContact || prev.dropOffContact
                       }));
                       e.target.value = '';
@@ -2681,7 +3606,7 @@ const ReceiptForm = () => {
 
   const [formData, setFormData] = useState({
     transactionType: 'LCL Consolidate', company: '', transportArrangement: 'Truck Arrangement by OmniMesh',
-    customer: '', consignee: '', consignor: '', pol: '', pod: '', consigneeDeliveryAddress: '', shipperDoNo: '', isUrgent: false,
+    customer: '', consignee: '', consignor: '', pol: '', pod: '', consigneeDeliveryAddress: '', consigneeDeliveryLocationId: '', pickupLocationId: '', shipperDoNo: '', isUrgent: false,
     sendingType: 'SEND IN', puNo: '', grnRemarks: ''
   });
 
@@ -2702,6 +3627,8 @@ const ReceiptForm = () => {
           pol: r.pol || '',
           pod: r.pod || '',
           consigneeDeliveryAddress: r.consigneeDeliveryAddress || '',
+          consigneeDeliveryLocationId: r.consigneeDeliveryLocationId || '',
+          pickupLocationId: r.pickupLocationId || '',
           shipperDoNo: r.shipperDoNo || '',
           grnRemarks: r.grnRemarks || '',
           isUrgent: r.isUrgent || false,
@@ -2719,6 +3646,8 @@ const ReceiptForm = () => {
         consignee: p.consigneeName || prev.consignee, 
         consignor: p.consignorName || prev.consignor, 
         consigneeDeliveryAddress: p.dropOffAddress || prev.consigneeDeliveryAddress, 
+        consigneeDeliveryLocationId: p.dropOffLocationId || prev.consigneeDeliveryLocationId,
+        pickupLocationId: p.pickupLocationId || prev.pickupLocationId,
         shipperDoNo: p.linkedSid || prev.shipperDoNo,
         sendingType: 'PICK UP',
         puNo: p.id
@@ -2733,7 +3662,7 @@ const ReceiptForm = () => {
     } else {
       setFormData({
         transactionType: 'LCL Consolidate', company: '', transportArrangement: 'Truck Arrangement by OmniMesh',
-        customer: '', consignee: '', consignor: '', pol: '', pod: '', consigneeDeliveryAddress: '', shipperDoNo: '', isUrgent: false,
+        customer: '', consignee: '', consignor: '', pol: '', pod: '', consigneeDeliveryAddress: '', consigneeDeliveryLocationId: '', pickupLocationId: '', shipperDoNo: '', isUrgent: false,
         sendingType: 'SEND IN', puNo: '', grnRemarks: ''
       });
       setLines([{ id: Date.now().toString(), product: '', uom: 'Pallet', qty: 1, l: '', w: '', h: '', weight: '', cbm: 0 }]);
@@ -3008,7 +3937,7 @@ const ReceiptForm = () => {
                   const c = (companies || []).find(c => c.name === formData.consignee);
                   const match = c?.deliveryAddresses.find(da => formatAddress(da).replace(/\n/g, ', ') === val);
                   if (match) {
-                    setFormData(prev => ({ ...prev, consigneeDeliveryAddress: formatAddress(match) }));
+                    setFormData(prev => ({ ...prev, consigneeDeliveryAddress: formatAddress(match), consigneeDeliveryLocationId: match.locationId || '' }));
                     e.target.value = '';
                   }
                 }} />
@@ -3339,7 +4268,7 @@ const ManifestForm = () => {
     checkAccess, editManifestId, manifests, setManifests, setEditManifestId, 
     setActiveTab, ports, getActiveInventory, generateManifestNo, generateLineHBL, 
     hblCountersMap, setHblCountersMap, showMessage, manifestCountersMap, setManifestCountersMap,
-    containerBookings, companies, containerTypes, fclTemplates, logActivity, pushNotificationToRelatedUsers
+    containerBookings, companies, containerTypes, fclTemplates, logActivity, pushNotificationToRelatedUsers, currencies, db, doc, setDoc
   } = React.useContext(AppContext);
 
   const [route, setRoute] = useState({ 
@@ -3352,6 +4281,8 @@ const ManifestForm = () => {
   const [fclBilling, setFclBilling] = useState([]);
   const [sortField, setSortField] = useState('date');
   const [sortDesc, setSortDesc] = useState(false);
+  const [showCapacityWarning, setShowCapacityWarning] = useState(false);
+  const [pendingManifestData, setPendingManifestData] = useState<any>(null);
 
   useEffect(() => {
     if (editManifestId) {
@@ -3609,6 +4540,26 @@ const ManifestForm = () => {
         totalCBM = parseFloat(route.totalCBM) || 0;
     }
 
+    let isExceeded = false;
+    const containerTypeId = route.bookingId ? containerBookings.find(b => b.id === route.bookingId.split('::')[0])?.containers?.find(c => c.id === route.bookingId.split('::')[1])?.containerTypeId : null;
+    const containerDef = containerTypeId ? (containerTypes || []).find(t => t.id === containerTypeId || t.name === containerTypeId || t.type === containerTypeId) : null;
+    const maxCbm = parseFloat(containerDef?.maxCbm || containerDef?.cbmCapacity || 0);
+    const maxWgt = parseFloat(containerDef?.maxWeight || containerDef?.payload || 0);
+
+    if (maxCbm > 0 && totalCBM > maxCbm) isExceeded = true;
+    if (maxWgt > 0 && totalWeight > maxWgt) isExceeded = true;
+
+    if (isExceeded) {
+       setPendingManifestData({ finalLines, totalCBM, totalWeight });
+       setShowCapacityWarning(true);
+    } else {
+       executeSaveManifest({ finalLines, totalCBM, totalWeight });
+    }
+  };
+
+  const executeSaveManifest = ({ finalLines, totalCBM, totalWeight }: any) => {
+    setShowCapacityWarning(false);
+    setPendingManifestData(null);
     let finalManifest;
     if (editManifestId) {
       finalManifest = { id: editManifestId, date: manifests.find(m => m.id === editManifestId)?.date || new Date().toISOString(), ...route, lines: finalLines, fclProducts, fclBilling, totalCBM, totalWeight };
@@ -3662,6 +4613,27 @@ const ManifestForm = () => {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
+       {showCapacityWarning && (
+         <div className="fixed inset-0 bg-slate-900/50 z-[200] flex items-center justify-center p-4">
+           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
+             <div className="flex items-center space-x-3 text-red-600 mb-4">
+               <AlertCircle className="w-6 h-6" />
+               <h3 className="text-xl font-bold">Capacity Exceeded</h3>
+             </div>
+             <p className="text-slate-600 mb-6">
+               The assigned CBM or Weight exceeds the container's capacity. Are you sure you want to proceed and save?
+             </p>
+             <div className="flex justify-end gap-3">
+               <button onClick={() => setShowCapacityWarning(false)} className="px-4 py-2 border border-slate-300 text-slate-700 rounded font-medium hover:bg-slate-50 transition">
+                 No, Return
+               </button>
+               <button onClick={() => executeSaveManifest(pendingManifestData)} className="px-4 py-2 bg-red-600 text-white rounded font-medium hover:bg-red-700 transition">
+                 Yes, Save
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
        <datalist id="port_list_mnf">
         {(ports || []).map(p => {
           const display = p.portName ? `${p.name} - ${p.portName} ${p.country ? `(${p.country})` : ''}` : p.name;
@@ -3677,6 +4649,9 @@ const ManifestForm = () => {
             {editManifestId ? (route.type === 'FCL' ? 'Edit FCL Manifest' : 'Edit Manifest') : (route.type === 'FCL' ? 'New FCL Container' : 'New Container Manifest')}
           </h2>
           {editManifestId && <button onClick={() => {setEditManifestId(null); setActiveTab('manifest-list');}} className="text-sm text-slate-500 border border-slate-300 px-3 py-1 rounded bg-white">Cancel Edit</button>}
+          {editManifestId && <button onClick={() => setActiveTab('cost-recovery')} className="text-sm bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition px-3 py-1 rounded font-medium flex items-center space-x-1">
+             <span>P&L Analysis</span>
+          </button>}
         </div>
         <span className="px-4 py-2 bg-teal-50 text-teal-700 rounded-lg font-mono font-medium border border-teal-200">{editManifestId || generateManifestNo(new Date(), route.pol, route.pod, manifestCountersMap)}</span>
       </div>
@@ -4029,13 +5004,23 @@ const ManifestForm = () => {
                           </select>
                         </td>
                         <td className="p-1"><input type="text" value={b.description || ''} onChange={(e) => updateFclBilling(idx, 'description', e.target.value)} className={`w-full p-2 border border-slate-300 rounded text-sm ${b.isNew ? 'bg-white' : 'bg-slate-50 text-slate-600'}`}/></td>
-                        <td className="p-1 relative">
-                          <span className="absolute left-3 top-3 text-sm text-slate-400 font-mono text-xs mt-0.5">{b.costCurrency}</span>
-                          <input type="number" step="0.01" value={b.cost || ''} onChange={(e) => updateFclBilling(idx, 'cost', e.target.value)} className="w-full p-2 pl-10 border border-red-200 bg-red-50/30 rounded text-sm text-right"/>
+                        <td className="p-1">
+                          <div className="flex border border-red-200 rounded overflow-hidden">
+                            <select value={b.costCurrency} onChange={(e) => updateFclBilling(idx, 'costCurrency', e.target.value)} className="w-16 p-2 text-xs border-r border-red-200 bg-red-50/50 focus:outline-none text-slate-500 font-mono">
+                              <option value="MYR">MYR</option>
+                              {(currencies || []).map(c => c.id !== 'MYR' && <option key={c.id} value={c.id}>{c.id}</option>)}
+                            </select>
+                            <input type="number" step="0.01" value={b.cost || ''} onChange={(e) => updateFclBilling(idx, 'cost', e.target.value)} className="w-full p-2 bg-red-50/30 text-sm text-right focus:outline-none"/>
+                          </div>
                         </td>
-                        <td className="p-1 relative">
-                          <span className="absolute left-3 top-3 text-sm text-slate-400 font-mono text-xs mt-0.5">{b.sellingCurrency}</span>
-                          <input type="number" step="0.01" value={b.selling || ''} onChange={(e) => updateFclBilling(idx, 'selling', e.target.value)} className="w-full p-2 pl-10 border border-green-200 bg-green-50/30 rounded text-sm text-right"/>
+                        <td className="p-1">
+                          <div className="flex border border-green-200 rounded overflow-hidden">
+                            <select value={b.sellingCurrency} onChange={(e) => updateFclBilling(idx, 'sellingCurrency', e.target.value)} className="w-16 p-2 text-xs border-r border-green-200 bg-green-50/50 focus:outline-none text-slate-500 font-mono">
+                              <option value="MYR">MYR</option>
+                              {(currencies || []).map(c => c.id !== 'MYR' && <option key={c.id} value={c.id}>{c.id}</option>)}
+                            </select>
+                            <input type="number" step="0.01" value={b.selling || ''} onChange={(e) => updateFclBilling(idx, 'selling', e.target.value)} className="w-full p-2 bg-green-50/30 text-sm text-right focus:outline-none"/>
+                          </div>
                         </td>
                         <td className="p-1 text-center"><button onClick={() => removeFclBilling(idx)} className="text-red-400 hover:text-red-600 p-1"><Trash2 className="w-4 h-4"/></button></td>
                       </tr>
@@ -4349,7 +5334,10 @@ const ManifestList = () => {
                         </>
                       )}
                     </div>
-                    <div className="flex justify-center space-x-2">
+                    <div className="flex justify-center space-x-2 mt-2 md:mt-0">
+                      {checkAccess('cost_recovery', 'view') && (
+                         <button onClick={() => { setActiveTab('cost-recovery'); }} className="text-indigo-600 hover:text-indigo-800 px-2 py-1 bg-indigo-50 hover:bg-indigo-100 rounded text-xs font-medium">P&L</button>
+                      )}
                       {checkAccess('manifests', 'edit') && (
                         <button onClick={() => { setEditManifestId(m.id); setActiveTab('new-manifest'); }} className="text-blue-600 hover:text-blue-800 px-2 py-1 bg-blue-50 hover:bg-blue-100 rounded text-xs font-medium">Edit</button>
                       )}
@@ -6292,6 +7280,409 @@ const PrintPickupNoteOverlay = () => {
   );
 };
 
+const StorageServiceView = () => {
+  const { 
+    checkAccess, storageEntries, setStorageEntries, storageRates, companies, showMessage, logActivity, db, doc, setDoc, deleteDoc, formatDate, calculateCBM
+  } = React.useContext(AppContext);
+
+  const [view, setView] = useState('list'); // 'list', 'edit'
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [formData, setFormData] = useState({
+    id: '', dateIn: new Date().toISOString().split('T')[0], dateOut: '', customerId: '', 
+    isStackable: true, palletCount: 1, handlingType: 'Forklift', billingLogic: 'CBM',
+    rateId: '', storageTerm: 'shortTerm',
+    isReserveSpace: true, stackingLayer: 1,
+    lines: []
+  });
+
+  if (!checkAccess('storage_service', 'view')) return <div className="p-8 text-center text-slate-500">Access Denied</div>;
+
+  const UNIT_CONVERSIONS = {
+    'cm': 0.01,
+    'mm': 0.001,
+    'inch': 0.0254,
+    'meter': 1,
+    'ft': 0.3048
+  };
+
+  const calculateLineMetrics = (line) => {
+    const l = parseFloat(line.length) || 0;
+    const w = parseFloat(line.width) || 0;
+    const h = parseFloat(line.height) || 0;
+    const qty = parseInt(line.qty) || 0;
+    const factor = UNIT_CONVERSIONS[line.unit || 'cm'];
+
+    const lm = l * factor;
+    const wm = w * factor;
+    const hm = h * factor;
+
+    const cbm = lm * wm * hm * qty;
+    const sqft = (lm * 3.28084) * (wm * 3.28084) * qty;
+
+    return { cbm, sqft };
+  };
+
+  const addLine = () => {
+    const newLine = { id: Date.now().toString(), product: '', qty: 1, length: 0, width: 0, height: 0, unit: 'cm', cbm: 0, sqft: 0 };
+    setFormData({ ...formData, lines: [...formData.lines, newLine] });
+  };
+
+  const updateLine = (idx, field, value) => {
+    const newLines = [...formData.lines];
+    newLines[idx] = { ...newLines[idx], [field]: value };
+    const { cbm, sqft } = calculateLineMetrics(newLines[idx]);
+    newLines[idx].cbm = cbm;
+    newLines[idx].sqft = sqft;
+    setFormData({ ...formData, lines: newLines });
+  };
+
+  const removeLine = (idx) => {
+    setFormData({ ...formData, lines: formData.lines.filter((_, i) => i !== idx) });
+  };
+
+  const totals = formData.lines.reduce((acc, l) => ({
+    cbm: acc.cbm + (l.cbm || 0),
+    sqft: acc.sqft + (l.sqft || 0),
+    qty: acc.qty + (parseInt(l.qty) || 0)
+  }), { cbm: 0, sqft: 0, qty: 0 });
+
+  const effectiveSqft = formData.isStackable && formData.stackingLayer > 0 ? totals.sqft / formData.stackingLayer : totals.sqft;
+
+  const availableRates = storageRates.filter(r => !r.customerId || r.customerId === formData.customerId);
+  const selectedRate = availableRates.find(r => r.id === formData.rateId);
+  let inboundCharge = 0;
+  let mainStorageCharge = 0;
+  let storageUnitVal = 0;
+  let handlingQty = 0;
+
+  if (selectedRate) {
+    handlingQty = formData.handlingType === 'Forklift' ? formData.palletCount : totals.qty;
+    inboundCharge = handlingQty * (selectedRate.inboundHandling || 0);
+
+    if (selectedRate.unitType === 'CBM') storageUnitVal = totals.cbm;
+    else if (selectedRate.unitType === 'SQFT') storageUnitVal = effectiveSqft;
+    else if (selectedRate.unitType === 'PALLET') storageUnitVal = formData.palletCount;
+    else if (selectedRate.unitType === 'UNIT') storageUnitVal = totals.qty;
+
+    const rateAmount = formData.storageTerm === 'longTerm' ? (selectedRate.longTermRate || 0) : (selectedRate.shortTermRate || 0);
+    mainStorageCharge = storageUnitVal * rateAmount;
+  }
+  const totalSellingPrice = inboundCharge + mainStorageCharge;
+
+  const saveEntry = async () => {
+    if (!formData.customerId || formData.lines.length === 0) {
+      return showMessage("Customer and at least one item are required.", "error");
+    }
+
+    if (formData.isStackable && (!formData.stackingLayer || formData.stackingLayer < 1)) {
+      return showMessage("Stacking layer MUST be at least 1.", "error");
+    }
+
+    const finalData = {
+      ...formData,
+      totalCbm: totals.cbm,
+      totalSqft: effectiveSqft,
+      totalQty: totals.qty,
+      inboundCharge,
+      mainStorageCharge,
+      totalSellingPrice,
+      updatedAt: new Date().toISOString()
+    };
+
+    try {
+      await setDoc(doc(db, 'storageEntries', finalData.id), finalData);
+      showMessage("Storage record saved successfully", "success");
+      setView('list');
+      logActivity(formData.id.startsWith('temp') ? 'CREATE' : 'UPDATE', 'Storage Service', finalData.id, `Saved storage record for ${finalData.customerId}`);
+    } catch (e) {
+      showMessage(`Error: ${e.message}`, "error");
+    }
+  };
+
+  const openForm = (entry = null) => {
+    if (entry) {
+      setFormData({
+        ...entry,
+        rateId: entry.rateId || '',
+        storageTerm: entry.storageTerm || 'shortTerm',
+        isReserveSpace: entry.isReserveSpace ?? true,
+        stackingLayer: entry.stackingLayer || 1
+      });
+    } else {
+      setFormData({
+        id: `STR-${Date.now()}`, dateIn: new Date().toISOString().split('T')[0], dateOut: '', customerId: '', 
+        isStackable: true, palletCount: 1, handlingType: 'Forklift', billingLogic: 'CBM',
+        rateId: '', storageTerm: 'shortTerm',
+        isReserveSpace: true, stackingLayer: 1,
+        lines: []
+      });
+    }
+    setView('edit');
+  };
+
+  if (view === 'edit') {
+    return (
+      <div className="space-y-6 max-w-6xl mx-auto pb-20">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <Inbox className="w-6 h-6 text-indigo-600" />
+            {formData.id.startsWith('STR-') ? 'New Storage Inbound' : 'Edit Storage Record'}
+          </h2>
+          <button onClick={() => setView('list')} className="text-slate-500 hover:text-slate-700 flex items-center font-medium">
+            <ChevronLeft className="w-4 h-4 mr-1" /> Back to List
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Date In</label>
+                  <input type="date" value={formData.dateIn} onChange={(e) => setFormData({...formData, dateIn: e.target.value})} className="w-full p-2 border border-slate-300 rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Customer <span className="text-red-500">*</span></label>
+                  <select value={formData.customerId} onChange={(e) => setFormData({...formData, customerId: e.target.value})} className="w-full p-2 border border-slate-300 rounded-md">
+                    <option value="">-- Select Customer --</option>
+                    {companies.filter(c => c.isCustomer).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center mb-4 border-b pb-2">
+                <h4 className="font-bold text-slate-800 uppercase text-xs tracking-wider">Stock Item Lines</h4>
+                <button onClick={addLine} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-md text-xs font-bold hover:bg-slate-200 transition">+ Add Item</button>
+              </div>
+
+              <div className="space-y-4">
+                {formData.lines.map((line, idx) => (
+                  <div key={line.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200 relative group">
+                    <button onClick={() => removeLine(idx)} className="absolute -right-2 -top-2 bg-white text-red-400 p-1 rounded-full border border-slate-200 shadow-sm opacity-0 group-hover:opacity-100 transition"><Trash2 className="w-4 h-4"/></button>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div className="md:col-span-2">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Product Description</label>
+                        <input type="text" value={line.product} onChange={(e) => updateLine(idx, 'product', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded bg-white" placeholder="e.g. Spare Parts" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Input Unit</label>
+                        <select value={line.unit} onChange={(e) => updateLine(idx, 'unit', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded bg-white">
+                          <option value="cm">cm</option>
+                          <option value="mm">mm</option>
+                          <option value="inch">inch</option>
+                          <option value="ft">ft</option>
+                          <option value="meter">meter</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Quantity</label>
+                        <input type="number" value={line.qty} onChange={(e) => updateLine(idx, 'qty', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded bg-white text-center font-bold" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 mt-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Length</label>
+                        <input type="number" step="0.1" value={line.length} onChange={(e) => updateLine(idx, 'length', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded bg-white" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Width</label>
+                        <input type="number" step="0.1" value={line.width} onChange={(e) => updateLine(idx, 'width', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded bg-white" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase">Height</label>
+                        <input type="number" step="0.1" value={line.height} onChange={(e) => updateLine(idx, 'height', e.target.value)} className="w-full p-1.5 text-sm border border-slate-300 rounded bg-white" />
+                      </div>
+                    </div>
+                    <div className="mt-3 flex gap-4 text-[11px] font-mono border-t pt-2 border-slate-200">
+                      <span className="text-blue-600 px-2 py-0.5 bg-blue-50 rounded">CBM: {(line.cbm || 0).toFixed(4)}</span>
+                      <span className="text-teal-600 px-2 py-0.5 bg-teal-50 rounded">SQFT: {(line.sqft || 0).toFixed(2)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 sticky top-4">
+              <h4 className="font-bold text-slate-800 border-b pb-2 mb-4 uppercase text-xs tracking-wider">Storage & Handling Logic</h4>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="flex items-center space-x-2 cursor-pointer p-2 bg-slate-50 rounded border border-slate-100 hover:bg-slate-100 transition mb-3">
+                    <input type="checkbox" checked={formData.isReserveSpace} onChange={(e) => setFormData({...formData, isReserveSpace: e.target.checked})} className="w-4 h-4 text-emerald-600 rounded" />
+                    <span className="text-sm font-semibold text-emerald-800">Reserve Base Storage Space</span>
+                  </label>
+                </div>
+                
+                <div>
+                  <label className="flex items-center space-x-2 cursor-pointer p-2 bg-slate-50 rounded border border-slate-100 hover:bg-slate-100 transition">
+                    <input type="checkbox" checked={formData.isStackable} onChange={(e) => setFormData({...formData, isStackable: e.target.checked})} className="w-4 h-4 text-indigo-600 rounded" />
+                    <span className="text-sm font-semibold text-slate-700">Is Cargo Stackable?</span>
+                  </label>
+                  <p className="text-[10px] text-slate-500 mt-1 ml-6">{formData.isStackable ? 'Recommended: Charge by CBM' : 'Recommended: Charge by SQFT (Flat flooring)'}</p>
+                </div>
+
+                {formData.isStackable && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Stacking Layer (Levels)</label>
+                    <input type="number" value={formData.stackingLayer} onChange={(e) => setFormData({...formData, stackingLayer: parseInt(e.target.value) || 1})} min={1} className="w-full p-2 border border-slate-300 rounded-md bg-white font-bold" />
+                    <p className="text-[10px] text-slate-500 mt-1">Total SQFT divided by {formData.stackingLayer} = {effectiveSqft.toFixed(2)} SQFT footprint</p>
+                  </div>
+                )}
+
+                <div>
+                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Pallet Count</label>
+                   <input type="number" value={formData.palletCount} onChange={(e) => setFormData({...formData, palletCount: parseInt(e.target.value)})} className="w-full p-2 border border-slate-300 rounded-md bg-white font-bold" />
+                </div>
+
+                <div>
+                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Handling Method</label>
+                   <select value={formData.handlingType} onChange={(e) => setFormData({...formData, handlingType: e.target.value})} className="w-full p-2 border border-slate-300 rounded-md bg-white">
+                      <option value="Forklift">Forklift (Standard Pallet)</option>
+                      <option value="Manpower">Manpower (Loose Cartons)</option>
+                   </select>
+                </div>
+
+                <div className="border-t border-slate-100 pt-4">
+                   <h5 className="text-[10px] font-bold text-slate-500 uppercase mb-2">Billing Details</h5>
+                   <div className="space-y-3">
+                     <div>
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Apply Storage Rate</label>
+                       <select value={formData.rateId} onChange={(e) => setFormData({...formData, rateId: e.target.value})} className="w-full p-2 border border-slate-300 rounded-md bg-white">
+                          <option value="">-- No Rate Selected --</option>
+                          {availableRates.map(r => <option key={r.id} value={r.id}>{r.name} (per {r.unitType})</option>)}
+                       </select>
+                     </div>
+                     <div>
+                       <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Length of Storage</label>
+                       <select value={formData.storageTerm} onChange={(e) => setFormData({...formData, storageTerm: e.target.value})} className="w-full p-2 border border-slate-300 rounded-md bg-white">
+                          <option value="shortTerm">Short Term (&le; 6 Months)</option>
+                          <option value="longTerm">Long Term (&gt; 6 Months)</option>
+                       </select>
+                     </div>
+                   </div>
+                </div>
+
+                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 space-y-2">
+                  <div className="flex justify-between text-xs font-bold text-slate-500 uppercase">
+                    <span>Total Summary</span>
+                    <span className="text-indigo-600">{totals.qty} Units</span>
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <span className="text-sm text-slate-600">Total CBM:</span>
+                    <span className="text-xl font-black text-indigo-800">{totals.cbm.toFixed(3)}</span>
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <span className="text-sm text-slate-600">Total SQFT:</span>
+                    <span className="text-xl font-black text-teal-800">{totals.sqft.toFixed(2)}</span>
+                  </div>
+
+                  {formData.rateId && selectedRate && (
+                    <div className="mt-4 pt-3 border-t border-indigo-200 space-y-1">
+                      <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-2">Price Breakdown (RM)</p>
+                      <div className="flex justify-between text-xs text-indigo-800">
+                        <span>Inbound Handling:</span>
+                        <span className="font-mono">{inboundCharge.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-indigo-800">
+                        <span>Storage ({selectedRate.unitType}):</span>
+                        <span className="font-mono">{mainStorageCharge.toFixed(2)} / period</span>
+                      </div>
+                      <div className="flex justify-between text-sm font-bold text-indigo-900 mt-2 pt-2 border-t border-indigo-200">
+                        <span>Min. Total Selling Price:</span>
+                        <span>RM {totalSellingPrice.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!formData.rateId && (
+                    <div className="mt-4 pt-3 border-t border-indigo-200">
+                      <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Recommended Charge</p>
+                      <p className="font-black text-indigo-700 text-sm">CHARGE BY {formData.isStackable ? 'CBM' : 'SQFT'}</p>
+                    </div>
+                  )}
+                </div>
+
+                <button onClick={saveEntry} className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold shadow-lg hover:bg-blue-700 active:scale-[0.98] transition flex items-center justify-center gap-2">
+                  <Save className="w-5 h-5" /> Save Record
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <Inbox className="w-8 h-8 text-indigo-600" />
+            Storage Service Operations
+          </h2>
+          <p className="text-sm text-slate-500 mt-1 uppercase font-bold tracking-widest">Inbound & Outbound Inventory Tracking</p>
+        </div>
+        <button onClick={() => openForm()} className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg flex items-center font-bold tracking-wide shadow-indigo-200 shadow-lg hover:bg-indigo-700 transition">
+          <Plus className="w-5 h-5 mr-1" /> Stock Inbound
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="p-4 border-b border-slate-100 bg-slate-50">
+          <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">All Storage Records</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-white border-b border-slate-100 text-slate-500 text-xs font-black uppercase tracking-wider">
+              <tr>
+                <th className="p-4">Reference</th>
+                <th className="p-4">Date In</th>
+                <th className="p-4">Customer</th>
+                <th className="p-4 text-center">Unit Count</th>
+                <th className="p-4 text-right">CBM</th>
+                <th className="p-4 text-right">SQFT</th>
+                <th className="p-4 text-center">Logic</th>
+                <th className="p-4 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {storageEntries.length === 0 ? (
+                <tr><td colSpan={8} className="p-10 text-center text-slate-400 italic">No storage records found.</td></tr>
+              ) : storageEntries.map(e => (
+                <tr key={e.id} className="hover:bg-indigo-50/30 transition-colors">
+                  <td className="p-4 text-sm font-bold text-indigo-700 font-mono italic">{e.id}</td>
+                  <td className="p-4 text-sm text-slate-600">{formatDate(e.dateIn)}</td>
+                  <td className="p-4 text-sm font-semibold text-slate-700">{(companies.find(c => c.id === e.customerId)?.name || e.customerId)}</td>
+                  <td className="p-4 text-sm text-center font-bold text-slate-800">{e.totalQty || 0}</td>
+                  <td className="p-4 text-sm text-right font-mono text-blue-600">{Number(e.totalCbm || 0).toFixed(3)}</td>
+                  <td className="p-4 text-sm text-right font-mono text-teal-600">{Number(e.totalSqft || 0).toFixed(2)}</td>
+                  <td className="p-4 text-center">
+                    <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter ${e.isStackable ? 'bg-indigo-100 text-indigo-700' : 'bg-orange-100 text-orange-700'}`}>
+                      {e.isStackable ? 'Stackable' : 'Flat-Floor'}
+                    </span>
+                  </td>
+                  <td className="p-4 text-center">
+                    <button onClick={() => openForm(e)} className="text-blue-600 hover:text-blue-800 transition mr-4"><Edit className="w-4 h-4 inline"/></button>
+                    <button onClick={async () => {
+                      if (confirm("Delete this record?")) {
+                        await deleteDoc(doc(db, 'storageEntries', e.id));
+                        showMessage("Record deleted", "success");
+                      }
+                    }} className="text-red-400 hover:text-red-600 transition"><Trash2 className="w-4 h-4 inline"/></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PrintBookingFormOverlay = () => {
   const { printingBookingForm, setPrintingBookingForm, handlePrintRequest, handleGeneratePDF, formatDate } = React.useContext(AppContext);
   if (!printingBookingForm) return null;
@@ -6956,6 +8347,8 @@ const InboxSidebar = () => {
   );
 };
 
+// Dummy CostRecoveryView removed
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem('omniMeshUser');
@@ -7083,10 +8476,10 @@ export default function App() {
       date: new Date().toISOString(),
       userId: currentUser.id,
       username: currentUser.username,
-      action,
-      module,
-      recordId,
-      details: finalDetails
+      action: action || '',
+      module: module || '',
+      recordId: recordId || '',
+      details: finalDetails || ''
     };
     setDoc(doc(db, 'activityLogs', newLog.id), newLog)
       .catch(err => handleFirestoreError(err, OperationType.WRITE, `activityLogs/${newLog.id}`));
@@ -7147,6 +8540,7 @@ export default function App() {
   const [manifests, setManifests] = useState([]);
   const [commercialInvoices, setCommercialInvoices] = useState([]);
   const [breakbulks, setBreakbulks] = useState([]);
+  const [storageEntries, setStorageEntries] = useState([]);
   
   // Master Data State
   const [companies, setCompanies] = useState([]);
@@ -7156,9 +8550,20 @@ export default function App() {
   const [warehouses, setWarehouses] = useState([]);
   const [containerTypes, setContainerTypes] = useState([]);
   const [fclTemplates, setFclTemplates] = useState([]);
+  const [currencies, setCurrencies] = useState([]);
+  const [glCodes, setGlCodes] = useState([]);
+  const [services, setServices] = useState([]);
+  const [csvExportTemplates, setCsvExportTemplates] = useState([]);
   const [containerBookings, setContainerBookings] = useState([]);
   const [haulierBookings, setHaulierBookings] = useState([]);
   const [tariffs, setTariffs] = useState([]);
+  const [storageZones, setStorageZones] = useState([]);
+  const [storageRates, setStorageRates] = useState([]);
+  const [vendorBills, setVendorBills] = useState([]);
+  const [costRecoveries, setCostRecoveries] = useState([]);
+  const [masterTariffs, setMasterTariffs] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [miscChargeTypes, setMiscChargeTypes] = useState([]);
   const [haulierCounter, setHaulierCounter] = useState(1);
   const [editHaulierBookingId, setEditHaulierBookingId] = useState(null);
 
@@ -7264,10 +8669,22 @@ export default function App() {
       { path: 'warehouses', setter: setWarehouses },
       { path: 'containerTypes', setter: setContainerTypes },
       { path: 'fclTemplates', setter: setFclTemplates },
+      { path: 'currencies', setter: setCurrencies },
+      { path: 'glCodes', setter: setGlCodes },
+      { path: 'services', setter: setServices },
+      { path: 'csvExportTemplates', setter: setCsvExportTemplates },
       { path: 'containerBookings', setter: setContainerBookings },
       { path: 'haulierBookings', setter: setHaulierBookings },
       { path: 'commercialInvoices', setter: setCommercialInvoices },
       { path: 'breakbulks', setter: setBreakbulks },
+      { path: 'storageEntries', setter: setStorageEntries },
+      { path: 'storageZones', setter: setStorageZones },
+      { path: 'storageRates', setter: setStorageRates },
+      { path: 'vendorBills', setter: setVendorBills },
+      { path: 'costRecoveries', setter: setCostRecoveries },
+      { path: 'masterTariffs', setter: setMasterTariffs },
+      { path: 'locations', setter: setLocations },
+      { path: 'miscChargeTypes', setter: setMiscChargeTypes },
       { path: 'activityLogs', setter: setActivityLogs },
       { path: 'notifications', setter: setNotifications }
     ];
@@ -7423,6 +8840,7 @@ export default function App() {
     (receipts || []).forEach(r => {
       (r.lines || []).forEach(line => {
         const key = `${r.id}-${line.id}`;
+        const qty = parseInt(line.qty) || 0;
         stockMap.set(key, {
           receiptId: r.id,
           date: r.date,
@@ -7436,9 +8854,9 @@ export default function App() {
           originalLineId: line.id,
           product: line.product,
           uom: line.uom,
-          receivedQty: line.qty,
-          currentQty: line.qty,
-          unitCbm: line.qty > 0 ? line.cbm / line.qty : 0,
+          receivedQty: qty,
+          currentQty: qty,
+          unitCbm: qty > 0 ? (line.cbm || 0) / qty : 0,
           unitWeight: parseFloat(line.weight) || 0,
           isUrgent: r.isUrgent || false
         });
@@ -7449,18 +8867,19 @@ export default function App() {
       const sourceKey = `${bb.receiptId}-${bb.originalLineId}`;
       let sourceItem = stockMap.get(sourceKey);
       if (sourceItem) {
-        sourceItem.currentQty -= bb.breakQty;
+        sourceItem.currentQty -= (parseInt(bb.breakQty) || 0);
       }
       (bb.lines || []).forEach(line => {
         const newKey = `${bb.receiptId}-${line.id}`;
+        const qty = parseInt(line.qty) || 0;
         stockMap.set(newKey, {
           ...sourceItem,
           originalLineId: line.id,
           product: line.product,
           uom: line.uom,
-          receivedQty: line.qty,
-          currentQty: line.qty,
-          unitCbm: line.qty > 0 ? line.cbm / line.qty : 0,
+          receivedQty: qty,
+          currentQty: qty,
+          unitCbm: qty > 0 ? (line.cbm || 0) / qty : 0,
           unitWeight: parseFloat(line.weight) || 0,
           isBreakbulk: true
         });
@@ -7470,7 +8889,7 @@ export default function App() {
     (returns || []).forEach(ret => {
       (ret.lines || []).forEach(retLine => {
         const key = `${ret.receiptId}-${retLine.originalLineId}`;
-        if (stockMap.has(key)) stockMap.get(key).currentQty -= retLine.returnQty;
+        if (stockMap.has(key)) stockMap.get(key).currentQty -= (parseInt(retLine.returnQty) || 0);
       });
     });
 
@@ -7478,7 +8897,7 @@ export default function App() {
       if (excludeManifestId && mnf.id === excludeManifestId) return;
       (mnf.lines || []).forEach(mnfLine => {
         const key = `${mnfLine.receiptId}-${mnfLine.originalLineId}`;
-        if (stockMap.has(key)) stockMap.get(key).currentQty -= mnfLine.loadQty;
+        if (stockMap.has(key)) stockMap.get(key).currentQty -= (parseInt(mnfLine.loadQty) || 0);
       });
     });
 
@@ -7498,6 +8917,14 @@ export default function App() {
     manifests, setManifests,
     commercialInvoices, setCommercialInvoices,
     breakbulks, setBreakbulks,
+    storageEntries, setStorageEntries,
+    storageZones, setStorageZones,
+    storageRates, setStorageRates,
+    vendorBills, setVendorBills,
+    costRecoveries, setCostRecoveries,
+    masterTariffs, setMasterTariffs,
+    locations, setLocations,
+    miscChargeTypes, setMiscChargeTypes,
     companies, setCompanies,
     ports, setPorts,
     users, setUsers,
@@ -7506,6 +8933,10 @@ export default function App() {
     containerTypes, setContainerTypes,
     containerBookings, setContainerBookings,
     fclTemplates, setFclTemplates,
+    currencies, setCurrencies,
+    glCodes, setGlCodes,
+    services, setServices,
+    csvExportTemplates, setCsvExportTemplates,
     haulierBookings, setHaulierBookings,
     tariffs, setTariffs,
     editHaulierBookingId, setEditHaulierBookingId,
@@ -7590,6 +9021,12 @@ export default function App() {
                 </>
               )}
               
+              {checkAccess('storage_service', 'view') && (
+                <button title="Storage Service" onClick={() => setActiveTab('storage-service')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'storage-service' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}>
+                  <Inbox className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Storage Service</span>}
+                </button>
+              )}
+
               {(checkAccess('pickups', 'view') || checkAccess('manifests', 'view')) && showGroup('service bookings', 'new pickup', 'pickup requests', 'new container booking', 'container bookings', 'new haulier', 'haulier bookings') && (
                 <>
                   <div 
@@ -7694,6 +9131,41 @@ export default function App() {
                       )}
                       {checkAccess('inventory', 'view') && showModule('active inventory') && (
                         <button title="Active Inventory" onClick={() => setActiveTab('inventory')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'inventory' ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><FileText className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Active Inventory</span>}</button>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+
+              {(checkAccess('vendor_bills', 'view') || checkAccess('cost_recovery', 'view')) && showGroup('billing & costing', 'vendor bills', 'cost recovery') && (
+                <>
+                  <div 
+                    className="pt-4 pb-2 px-4 cursor-pointer hover:text-slate-300 flex items-center justify-between text-slate-500"
+                    onClick={() => !isSidebarCollapsed && toggleGroup('billing')}
+                  >
+                    {isSidebarCollapsed ? <div className="h-px w-full bg-slate-700 my-2"></div> : (
+                      <>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-left">Billing & Costing</p>
+                        {collapsedGroups.billing ? <ChevronRight className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+                      </>
+                    )}
+                  </div>
+                  {(!collapsedGroups.billing || isSidebarCollapsed || !!moduleSearch) && (
+                    <>
+                      {checkAccess('vendor_bills', 'view') && showModule('vendor bills') && (
+                        <button title="Vendor Bills" onClick={() => setActiveTab('vendor-bills')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'vendor-bills' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}>
+                          <FileText className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Vendor Bills</span>}
+                        </button>
+                      )}
+                      {checkAccess('cost_recovery', 'view') && showModule('cost recovery') && (
+                        <button title="Container P&L" onClick={() => setActiveTab('cost-recovery')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'cost-recovery' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}>
+                          <FileText className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Container P&L</span>}
+                        </button>
+                      )}
+                      {checkAccess('accounting', 'view') && showModule('accounting') && (
+                        <button title="Accounting Integration" onClick={() => setActiveTab('accounting')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'accounting' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}>
+                          <FileDown className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Acct Integration</span>}
+                        </button>
                       )}
                     </>
                   )}
@@ -7852,8 +9324,12 @@ export default function App() {
               {activeTab === 'inventory' && <InventoryView />}
               {activeTab === 'master-data' && <MasterMaintenance />}
               {activeTab === 'reports' && <ReportModule context={contextValue} />}
+              {activeTab === 'storage-service' && <StorageServiceView />}
               {activeTab === 'sys-admin' && <SystemAdminModule />}
               {activeTab === 'activity-logs' && <ActivityLogViewer />}
+              {activeTab === 'vendor-bills' && <VendorBillsView />}
+              {activeTab === 'cost-recovery' && <CostRecoveryView />}
+              {activeTab === 'accounting' && <AccountingIntegration />}
             </main>
           </div>
 

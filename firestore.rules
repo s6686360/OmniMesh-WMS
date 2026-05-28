@@ -31,8 +31,20 @@ service cloud.firestore {
     match /fclTemplates/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
     match /containerBookings/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
     match /commercialInvoices/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /storageEntries/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /storageRates/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /storageZones/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
     
     // 2. Master Data
+    match /vendorBills/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /costRecoveries/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /masterTariffs/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /locations/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /miscChargeTypes/{id} { allow read: if isSignedIn(); allow write: if isSignedIn(); }
+    match /currencies/{id} { allow read: if true; allow write: if isSignedIn(); }
+    match /glCodes/{id} { allow read: if true; allow write: if isSignedIn(); }
+    match /services/{id} { allow read: if true; allow write: if isSignedIn(); }
+    match /csvExportTemplates/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /companies/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /ports/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /warehouses/{id} { allow read: if true; allow write: if isSignedIn(); }
@@ -41,7 +53,7 @@ service cloud.firestore {
     match /roles/{id} { allow read: if true; allow write: if isSignedIn(); }
 
     // 3. System & Logs
-    match /activityLogs/{id} { allow read: if isSignedIn(); allow create: if isSignedIn(); }
+    match /activityLogs/{id} { allow read, write: if isSignedIn(); }
     match /system/{id} { allow read, write: if isSignedIn(); }
     match /notifications/{id} { 
       allow read, write: if isSignedIn();

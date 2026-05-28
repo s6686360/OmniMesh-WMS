@@ -235,6 +235,134 @@
         "receiptId": { "type": "string" }
       },
       "required": ["id", "date", "receiptId"]
+    },
+    "StorageZone": {
+      "title": "Storage Zone",
+      "description": "Represents a specific area allocation within the warehouse.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "totalArea": { "type": "number" },
+        "deadSpaceValue": { "type": "number" },
+        "deadSpaceType": { "type": "string" },
+        "storageServiceValue": { "type": "number" },
+        "storageServiceType": { "type": "string" },
+        "fulfillmentValue": { "type": "number" },
+        "fulfillmentType": { "type": "string" },
+        "lclKivValue": { "type": "number" },
+        "lclKivType": { "type": "string" },
+        "crossDockValue": { "type": "number" },
+        "crossDockType": { "type": "string" }
+      },
+      "required": ["id", "totalArea"]
+    },
+    "StorageRate": {
+      "title": "Storage Rate",
+      "description": "Represents storage pricing configurations.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "customerId": { "type": "string" },
+        "unitType": { "type": "string" },
+        "shortTermRate": { "type": "number" },
+        "longTermRate": { "type": "number" },
+        "inboundHandling": { "type": "number" },
+        "outboundHandling": { "type": "number" }
+      },
+      "required": ["id", "name", "unitType"]
+    },
+    "StorageEntry": {
+      "title": "Storage Entry",
+      "description": "Represents an inbound/outbound record for the storage service.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "dateIn": { "type": "string", "format": "date-time" },
+        "dateOut": { "type": "string", "format": "date-time" },
+        "customerId": { "type": "string" },
+        "isStackable": { "type": "boolean" },
+        "palletCount": { "type": "number" },
+        "handlingType": { "type": "string" },
+        "totalQty": { "type": "number" },
+        "totalCbm": { "type": "number" },
+        "totalSqft": { "type": "number" },
+        "rateId": { "type": "string" },
+        "storageTerm": { "type": "string" },
+        "inboundCharge": { "type": "number" },
+        "mainStorageCharge": { "type": "number" },
+        "totalSellingPrice": { "type": "number" },
+        "lines": { "type": "array" }
+      },
+      "required": ["id", "dateIn", "customerId"]
+    },
+    "VendorBill": {
+      "title": "Vendor Bill",
+      "description": "Represents a bill from a vendor allocated to manifests or containers.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "vendorId": { "type": "string" },
+        "manifestId": { "type": "string" },
+        "billNo": { "type": "string" },
+        "lines": { "type": "array" }
+      },
+      "required": ["id", "date", "vendorId"]
+    },
+    "CostRecovery": {
+      "title": "Cost Recovery Charge",
+      "description": "Represents monthly extra costs calculated per CBM.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "description": { "type": "string" },
+        "totalExtraCost": { "type": "number" },
+        "totalCbm": { "type": "number" },
+        "costPerCbm": { "type": "number" },
+        "sellingPricePerCbm": { "type": "number" }
+      },
+      "required": ["id", "startDate", "endDate"]
+    },
+    "Location": {
+      "title": "Location",
+      "description": "Location for Pickup and Delivery",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "isOutskirt": { "type": "boolean" }
+      },
+      "required": ["id", "name"]
+    },
+    "MiscChargeType": {
+      "title": "Misc Charge Type",
+      "description": "Types of miscellaneous charges",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "MasterTariff": {
+      "title": "Master Tariff",
+      "description": "Represents tariffs grouped by type.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "tariffType": { "type": "string" },
+        "pol": { "type": "string" },
+        "pod": { "type": "string" },
+        "locationFrom": { "type": "string" },
+        "locationTo": { "type": "string" },
+        "miscChargeTypeId": { "type": "string" },
+        "rates": { "type": "array" }
+      },
+      "required": ["id", "tariffType", "name"]
     }
   },
   "firestore": {
@@ -255,6 +383,14 @@
     "activityLogs": { "schema": "ActivityLog", "description": "System activity audit trail" },
     "notifications": { "schema": "Notification", "description": "User notifications" },
     "breakbulks": { "schema": "Breakbulk", "description": "Breakbulk (split) shipment records" },
+    "storageZones": { "schema": "StorageZone", "description": "Warehouse storage zone allocation" },
+    "storageRates": { "schema": "StorageRate", "description": "Storage pricing rates" },
+    "storageEntries": { "schema": "StorageEntry", "description": "Storage service stock entries" },
+    "vendorBills": { "schema": "VendorBill", "description": "Vendor billing attached to manifests" },
+    "costRecoveries": { "schema": "CostRecovery", "description": "Extra costs recovered over time periods" },
+    "masterTariffs": { "schema": "MasterTariff", "description": "Customer specific tariff rates by type" },
+    "locations": { "schema": "Location", "description": "Locations for pickup and delivery" },
+    "miscChargeTypes": { "schema": "MiscChargeType", "description": "Types of misc charges" },
     "system": { "schema": "object", "description": "System configuration and counters" }
   }
 }
