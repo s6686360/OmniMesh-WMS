@@ -14,6 +14,7 @@ import { CommercialInvoiceForm } from './CommercialInvoiceForm';
 import { CommercialInvoiceList } from './CommercialInvoiceList';
 import { ReportModule } from './ReportModule';
 import { HandbookOverlay } from './HandbookOverlay';
+import { ThemePicker } from './ThemePicker';
 import { VendorBillsView } from './VendorBillView';
 import { CostRecoveryView } from './CostRecoveryView';
 import AccountingIntegration from './AccountingIntegration';
@@ -3620,7 +3621,7 @@ const PickupList = () => {
         </h2>
         <div className="flex items-center space-x-4">
           {selectedPickups.length > 0 && checkAccess('pickups', 'print') && (
-            <button onClick={handleBulkPrint} className="flex items-center space-x-2 bg-slate-800 text-white px-4 py-2 rounded-lg font-medium hover:bg-slate-700 transition">
+            <button onClick={handleBulkPrint} className="flex items-center space-x-2 bg-slate-100 text-indigo-600 px-4 py-2 rounded-lg font-medium hover:bg-slate-700 transition">
               <Printer className="w-4 h-4"/> <span>Print ({selectedPickups.length})</span>
             </button>
           )}
@@ -6940,7 +6941,7 @@ const LetterheadHeader = ({ title = '', subtitle = '', rightNode = null, docType
 
   if (!lh) {
     return (
-      <div className="border-b-2 border-slate-800 pb-6 mb-6 flex justify-between items-end">
+      <div className="border-b-2 border-slate-200 pb-6 mb-6 flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-black">{title || 'COMPANY NAME NAME'}</h1>
           <p className="text-sm font-bold uppercase mt-1">{subtitle}</p>
@@ -6951,7 +6952,7 @@ const LetterheadHeader = ({ title = '', subtitle = '', rightNode = null, docType
   }
 
   return (
-    <div className="border-b-2 border-slate-800 pb-6 mb-6">
+    <div className="border-b-2 border-slate-200 pb-6 mb-6">
       <div className="flex justify-between items-start mb-4">
         <div>
           <h1 className="text-3xl font-black text-slate-800">{lh.name || 'Company Name'}</h1>
@@ -7094,7 +7095,7 @@ const PrintPackingListOverlay = () => {
             rightNode={<><p className="text-sm uppercase font-semibold">Manifest No</p><p className="text-xl font-bold font-mono">{m.id}</p></>}
           />
           
-          <div className="grid grid-cols-2 gap-4 mb-6 border border-slate-800 p-4 font-mono text-sm">
+          <div className="grid grid-cols-2 gap-4 mb-6 border border-slate-200 p-4 font-mono text-sm">
             <div>
               <p><strong>MANIFEST NO:</strong> {m.id}</p>
               <p><strong>TYPE:</strong> <span className={`px-2 rounded-sm border ${m.type === 'FCL' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-teal-50 border-teal-200 text-teal-700'}`}>{m.type || 'LCL'}</span></p>
@@ -7345,7 +7346,7 @@ const PrintDeliveryOrdersOverlay = () => {
 
               <div className="grid grid-cols-2 gap-12 mt-auto pt-10 text-sm absolute bottom-10 left-10 right-10">
                 <div className="pt-2">
-                  <p className="font-bold text-slate-800 border-b-2 border-slate-800 pb-1 mb-4">Driver / Transporter</p>
+                  <p className="font-bold text-slate-800 border-b-2 border-slate-200 pb-1 mb-4">Driver / Transporter</p>
                   <div className="space-y-4">
                     <div className="flex items-end"><span className="w-28 font-semibold text-slate-600">Transporter:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
                     <div className="flex items-end"><span className="w-28 font-semibold text-slate-600">Driver Name:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
@@ -7353,7 +7354,7 @@ const PrintDeliveryOrdersOverlay = () => {
                   </div>
                 </div>
                 <div className="pt-2">
-                  <p className="font-bold text-slate-800 border-b-2 border-slate-800 pb-1 mb-4">Consignee Received Acknowledgement</p>
+                  <p className="font-bold text-slate-800 border-b-2 border-slate-200 pb-1 mb-4">Consignee Received Acknowledgement</p>
                   <div className="space-y-4">
                     <div className="flex items-end"><span className="w-32 font-semibold text-slate-600">Company Stamp:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
                     <div className="flex items-end"><span className="w-32 font-semibold text-slate-600">Receiver Name:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
@@ -8058,7 +8059,7 @@ const PrintCommercialInvoiceOverlay = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-4 border border-slate-800 mb-8 divide-x divide-slate-800 text-sm">
+          <div className="grid grid-cols-4 border border-slate-200 mb-8 divide-x divide-slate-800 text-sm">
              <div className="p-2 flex flex-col">
                <span className="text-[10px] font-bold text-slate-500 uppercase">Vessel / Voyage</span>
                <span className="font-semibold mt-1">{ci.vessel || '-'} {ci.voyage || ''}</span>
@@ -8094,14 +8095,14 @@ const PrintCommercialInvoiceOverlay = () => {
              </div>
           </div>
 
-          <table className="w-full text-left border border-slate-800 text-sm mb-6">
-            <thead className="bg-slate-100 border-b border-slate-800">
+          <table className="w-full text-left border border-slate-200 text-sm mb-6">
+            <thead className="bg-slate-100 border-b border-slate-200">
               <tr>
-                <th className="p-2 font-bold border-r border-slate-800 w-12 text-center">No.</th>
-                <th className="p-2 font-bold border-r border-slate-800">Description of Goods</th>
-                <th className="p-2 font-bold border-r border-slate-800 text-center w-24">HS Code</th>
-                <th className="p-2 font-bold border-r border-slate-800 text-right w-24">Quantity</th>
-                <th className="p-2 font-bold border-r border-slate-800 text-right w-24">CBM</th>
+                <th className="p-2 font-bold border-r border-slate-200 w-12 text-center">No.</th>
+                <th className="p-2 font-bold border-r border-slate-200">Description of Goods</th>
+                <th className="p-2 font-bold border-r border-slate-200 text-center w-24">HS Code</th>
+                <th className="p-2 font-bold border-r border-slate-200 text-right w-24">Quantity</th>
+                <th className="p-2 font-bold border-r border-slate-200 text-right w-24">CBM</th>
                 <th className="p-2 font-bold text-right w-32">Total Val ({ci.currency})</th>
               </tr>
             </thead>
@@ -8109,23 +8110,23 @@ const PrintCommercialInvoiceOverlay = () => {
               {(ci.lines || []).map((line, idx) => {
                  return (
                    <tr key={idx}>
-                     <td className="p-2 border-r border-slate-800 text-center">{idx + 1}</td>
-                     <td className="p-2 border-r border-slate-800 whitespace-pre-wrap">{line.product}</td>
-                     <td className="p-2 border-r border-slate-800 text-center font-mono text-xs">{line.hsCode || '-'}</td>
-                     <td className="p-2 border-r border-slate-800 text-right">{line.qty} <span className="text-xs text-slate-500">{line.uom}</span></td>
-                     <td className="p-2 border-r border-slate-800 text-right">{(parseFloat(line.cbm) || 0).toFixed(3)}</td>
+                     <td className="p-2 border-r border-slate-200 text-center">{idx + 1}</td>
+                     <td className="p-2 border-r border-slate-200 whitespace-pre-wrap">{line.product}</td>
+                     <td className="p-2 border-r border-slate-200 text-center font-mono text-xs">{line.hsCode || '-'}</td>
+                     <td className="p-2 border-r border-slate-200 text-right">{line.qty} <span className="text-xs text-slate-500">{line.uom}</span></td>
+                     <td className="p-2 border-r border-slate-200 text-right">{(parseFloat(line.cbm) || 0).toFixed(3)}</td>
                      <td className="p-2 text-right">{(parseFloat(line.totalValue) || 0).toFixed(2)}</td>
                    </tr>
                  );
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-slate-800">
-                <td colSpan="3" className="p-2 border-r border-slate-800 text-right font-bold uppercase text-xs">Total:</td>
-                <td className="p-2 border-r border-slate-800 text-right font-bold">
+              <tr className="border-t-2 border-slate-200">
+                <td colSpan="3" className="p-2 border-r border-slate-200 text-right font-bold uppercase text-xs">Total:</td>
+                <td className="p-2 border-r border-slate-200 text-right font-bold">
                    {(ci.lines || []).reduce((sum, line) => sum + (parseFloat(line.qty) || 0), 0)}
                 </td>
-                <td className="p-2 border-r border-slate-800 text-right font-bold">
+                <td className="p-2 border-r border-slate-200 text-right font-bold">
                    {(ci.lines || []).reduce((sum, line) => sum + (parseFloat(line.cbm) || 0), 0).toFixed(3)}
                 </td>
                 <td className="p-2 text-right font-bold text-base bg-slate-100">
@@ -8236,7 +8237,7 @@ const PrintReturnNoteOverlay = () => {
 
           <div className="grid grid-cols-2 gap-12 mt-auto pt-10 text-sm absolute bottom-10 left-10 right-10">
             <div className="pt-2">
-              <p className="font-bold text-slate-800 border-b-2 border-slate-800 pb-1 mb-4">
+              <p className="font-bold text-slate-800 border-b-2 border-slate-200 pb-1 mb-4">
                 Return and Issued By:<br/> <span className="text-lg text-blue-800 font-black">{receipt.company || 'OmniMesh'}</span>
               </p>
               <div className="space-y-4 mt-6">
@@ -8246,7 +8247,7 @@ const PrintReturnNoteOverlay = () => {
               </div>
             </div>
             <div className="pt-2">
-              <p className="font-bold text-slate-800 border-b-2 border-slate-800 pb-1 mb-4">
+              <p className="font-bold text-slate-800 border-b-2 border-slate-200 pb-1 mb-4">
                 Received By / On behalf of:<br/> <span className="text-lg text-orange-800 font-black uppercase">{receipt.customer || 'Customer'}</span>
               </p>
               <div className="space-y-4 mt-6">
@@ -8414,14 +8415,26 @@ const LoginScreen = () => {
   }
 
   return (
-    <div className="flex h-screen bg-slate-100 items-center justify-center p-4">
+    <div className="flex h-screen bg-slate-100 items-center justify-center p-4" onContextMenu={(e) => e.preventDefault()}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+          <img 
+            src="/logo.png" 
+            alt="Company Logo" 
+            className="h-16 mx-auto mb-4 object-contain"
+            draggable={false}
+            onContextMenu={(e) => e.preventDefault()}
+            style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              document.getElementById('fallback-logo-icon')!.style.display = 'flex';
+            }}
+          />
+          <div id="fallback-logo-icon" className="bg-blue-100 w-16 h-16 rounded-full hidden items-center justify-center mx-auto mb-4">
             <Boxes className="w-8 h-8 text-blue-600" />
           </div>
           <h1 className="text-2xl font-black text-slate-800">OmniMesh miniERP</h1>
-          <p className="text-slate-500 mt-1">miniERP V2.01</p>
+          <p className="text-slate-500 mt-1">V2.01</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
@@ -8576,6 +8589,20 @@ const InboxSidebar = () => {
 // Dummy CostRecoveryView removed
 
 export default function App() {
+  const [appTheme, setAppTheme] = useState(() => {
+    const saved = localStorage.getItem('omniMeshTheme');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return { sidebar: 'dark', main: 'slate' };
+  });
+
+  const updateAppTheme = (key: string, val: string) => {
+    const newTheme = { ...appTheme, [key]: val };
+    setAppTheme(newTheme);
+    localStorage.setItem('omniMeshTheme', JSON.stringify(newTheme));
+  };
+
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem('omniMeshUser');
     if (saved) {
@@ -9132,7 +9159,21 @@ export default function App() {
     return Array.from(stockMap.values());
   };
 
+  
+  const getSidebarThemeClasses = (theme) => {
+    if (theme === 'light') return { bg: 'bg-white', text: 'text-slate-700', active: 'bg-blue-600 text-white', hover: 'hover:bg-slate-100 hover:text-blue-600', border: 'border-slate-200' };
+    if (theme === 'blue') return { bg: 'bg-blue-900', text: 'text-blue-100', active: 'bg-blue-600 text-white', hover: 'hover:bg-blue-800 hover:text-white', border: 'border-blue-800' };
+    return { bg: 'bg-slate-900', text: 'text-slate-300', active: 'bg-indigo-600 text-white', hover: 'hover:bg-slate-800 hover:text-white', border: 'border-slate-800' };
+  };
+  const getMainThemeClasses = (theme) => {
+    if (theme === 'white') return 'bg-white';
+    if (theme === 'zinc') return 'bg-zinc-50';
+    if (theme === 'stone') return 'bg-stone-50';
+    return 'bg-slate-50';
+  };
+
   const contextValue = {
+    appTheme, updateAppTheme,
     currentUser, setCurrentUser, handleAuthLogin, handleAuthLogout,
     activityLogs, setActivityLogs, logActivity, ActivityHistory,
     notifications, setNotifications, pushNotificationToRelatedUsers, inboxOpen, setInboxOpen,
@@ -9205,7 +9246,7 @@ export default function App() {
   return (
     <AppContext.Provider value={contextValue}>
       { !currentUser ? <LoginScreen /> : (
-        <div className="flex h-screen bg-slate-50 font-sans text-slate-900 relative">
+        <div className={`flex h-screen ${getMainThemeClasses(appTheme.main)} font-sans text-slate-900 relative`}>
           
           {appMessage && (
             <div className="fixed inset-0 z-[100] flex items-start justify-center pt-10 pointer-events-none print:hidden">
@@ -9217,18 +9258,23 @@ export default function App() {
             </div>
           )}
 
-          <div className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-slate-900 text-slate-300 flex flex-col overflow-y-auto no-print shadow-xl main-app-container transition-all duration-300`}>
-            <div className={`p-6 sticky top-0 bg-slate-900 z-10 border-b border-slate-800 flex items-center justify-between`}>
+          <div className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} ${getSidebarThemeClasses(appTheme.sidebar).bg} ${getSidebarThemeClasses(appTheme.sidebar).text} flex flex-col overflow-y-auto no-print shadow-xl main-app-container transition-all duration-300`}>
+            <div className={`p-6 sticky top-0 ${getSidebarThemeClasses(appTheme.sidebar).bg} z-10 border-b ${getSidebarThemeClasses(appTheme.sidebar).border} flex items-center justify-between`}>
               {!isSidebarCollapsed ? (
                 <>
-                  <div className="flex flex-col">
-                    <h1 className="text-2xl font-black text-white tracking-tight flex items-center space-x-2"><Boxes className="w-8 h-8 text-blue-500 min-w-[32px]" /><span>OmniMesh miniERP</span></h1>
-                    <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider">V2.01</p>
+                  <div className="flex flex-col items-center justify-center w-full">
+                    <img src="/logo.png" alt="Logo" className="h-10 object-contain mb-2" onError={(e) => { e.currentTarget.style.display = 'none'; document.getElementById('sidebar-icon-fallback-1')!.style.display = 'block'; }} />
+                    <Boxes id="sidebar-icon-fallback-1" className="w-10 h-10 text-blue-500 mb-2" style={{ display: 'none' }} />
+                    <div className="flex items-baseline justify-center space-x-2">
+                      <h1 className="text-2xl font-black text-inherit tracking-tight">miniERP</h1>
+                      <span className="text-xs text-inherit opacity-70 uppercase tracking-wider font-bold">V2.01</span>
+                    </div>
                   </div>
                 </>
               ) : (
                 <div className="flex flex-col items-center w-full space-y-6">
-                  <Boxes className="w-8 h-8 text-blue-500" />
+                  <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; document.getElementById('sidebar-icon-fallback-2')!.style.display = 'block'; }} />
+                  <Boxes id="sidebar-icon-fallback-2" className="w-8 h-8 text-blue-500" style={{ display: 'none' }} />
                 </div>
               )}
             </div>
@@ -9238,12 +9284,12 @@ export default function App() {
               {checkAccess('dashboard', 'view') && showGroup('dashboard', 'track cargo') && (
                 <>
                   {showModule('dashboard') && (
-                    <button title="Dashboard" onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}>
+                    <button title="Dashboard" onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'dashboard' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}>
                       <LayoutDashboard className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Dashboard</span>}
                     </button>
                   )}
                   {showModule('track cargo') && (
-                    <button title="Track Cargo" onClick={() => setActiveTab('track')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'track' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}>
+                    <button title="Track Cargo" onClick={() => setActiveTab('track')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'track' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}>
                       <Search className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Track Cargo</span>}
                     </button>
                   )}
@@ -9251,7 +9297,7 @@ export default function App() {
               )}
               
               {checkAccess('storage_service', 'view') && (
-                <button title="Storage Service" onClick={() => setActiveTab('storage-service')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'storage-service' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}>
+                <button title="Storage Service" onClick={() => setActiveTab('storage-service')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'storage-service' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}>
                   <Inbox className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Storage Service</span>}
                 </button>
               )}
@@ -9272,22 +9318,22 @@ export default function App() {
                   {(!collapsedGroups.serviceBookings || isSidebarCollapsed || !!moduleSearch) && (
                     <>
                       {checkAccess('pickups', 'create') && showModule('new pickup') && (
-                        <button title="New Pickup" onClick={() => { setEditPickupId(null); setActiveTab('new-pickup'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-pickup' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><PackagePlus className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New Pickup</span>}</button>
+                        <button title="New Pickup" onClick={() => { setEditPickupId(null); setActiveTab('new-pickup'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-pickup' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><PackagePlus className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New Pickup</span>}</button>
                       )}
                       {checkAccess('pickups', 'view') && showModule('pickup requests') && (
-                        <button title="Pickup Requests" onClick={() => setActiveTab('pickup-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'pickup-list' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Pickup Requests</span>}</button>
+                        <button title="Pickup Requests" onClick={() => setActiveTab('pickup-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'pickup-list' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Pickup Requests</span>}</button>
                       )}
                       {checkAccess('manifests', 'create') && showModule('new container booking') && (
-                        <button title="New Container Booking" onClick={() => { setEditBookingId(null); setActiveTab('new-booking'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-booking' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><Ship className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New Container Booking</span>}</button>
+                        <button title="New Container Booking" onClick={() => { setEditBookingId(null); setActiveTab('new-booking'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-booking' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><Ship className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New Container Booking</span>}</button>
                       )}
                       {showModule('container bookings') && (
-                        <button title="Container Bookings" onClick={() => setActiveTab('booking-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'booking-list' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Container Bookings</span>}</button>
+                        <button title="Container Bookings" onClick={() => setActiveTab('booking-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'booking-list' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Container Bookings</span>}</button>
                       )}
                       {checkAccess('manifests', 'create') && showModule('new haulier') && (
-                        <button title="New Haulier" onClick={() => { setEditHaulierBookingId(null); setActiveTab('new-haulier-booking'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-haulier-booking' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><Truck className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New Haulier</span>}</button>
+                        <button title="New Haulier" onClick={() => { setEditHaulierBookingId(null); setActiveTab('new-haulier-booking'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-haulier-booking' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><Truck className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New Haulier</span>}</button>
                       )}
                       {showModule('haulier bookings') && (
-                        <button title="Haulier Bookings" onClick={() => setActiveTab('haulier-booking-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'haulier-booking-list' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Haulier Bookings</span>}</button>
+                        <button title="Haulier Bookings" onClick={() => setActiveTab('haulier-booking-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'haulier-booking-list' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Haulier Bookings</span>}</button>
                       )}
                     </>
                   )}
@@ -9310,27 +9356,27 @@ export default function App() {
                   {(!collapsedGroups.outbound || isSidebarCollapsed || !!moduleSearch) && (
                     <>
                       {(currentUser?.isWarehouseOperator || currentUser?.roleId === 'role-superadmin') && showModule('inbound dashboard') && (
-                        <button title="Warehouse Ops" onClick={() => setActiveTab('warehouse-decon')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'warehouse-decon' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}>
+                        <button title="Warehouse Ops" onClick={() => setActiveTab('warehouse-decon')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'warehouse-decon' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}>
                           <Boxes className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Inbound Dashboard</span>}
                         </button>
                       )}
                       {checkAccess('receipts', 'create') && showModule('new lcl shipment') && (
-                        <button title="New LCL Shipment" onClick={() => { setConvertPickupToReceiptData(null); setEditReceiptId(null); setActiveTab('new-receipt'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-receipt' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><PackagePlus className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New LCL Shipment</span>}</button>
+                        <button title="New LCL Shipment" onClick={() => { setConvertPickupToReceiptData(null); setEditReceiptId(null); setActiveTab('new-receipt'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-receipt' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><PackagePlus className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New LCL Shipment</span>}</button>
                       )}
                       {checkAccess('receipts', 'view') && showModule('shipments') && (
-                        <button title="Shipments" onClick={() => setActiveTab('receipt-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'receipt-list' ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Shipments</span>}</button>
+                        <button title="Shipments" onClick={() => setActiveTab('receipt-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'receipt-list' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Shipments</span>}</button>
                       )}
                       {checkAccess('manifests', 'create') && showModule('new manifest') && (
-                        <button title="New Manifest" onClick={() => { setEditManifestId(null); setActiveTab('new-manifest'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-manifest' ? 'bg-teal-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><Container className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New Manifest</span>}</button>
+                        <button title="New Manifest" onClick={() => { setEditManifestId(null); setActiveTab('new-manifest'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-manifest' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><Container className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New Manifest</span>}</button>
                       )}
                       {showModule('manifests') && (
-                        <button title="Manifests" onClick={() => setActiveTab('manifest-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'manifest-list' ? 'bg-teal-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><ClipboardList className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Manifests</span>}</button>
+                        <button title="Manifests" onClick={() => setActiveTab('manifest-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'manifest-list' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><ClipboardList className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Manifests</span>}</button>
                       )}
                       {checkAccess('commercial_invoices', 'create') && showModule('new ci/pl') && (
-                        <button title="New CI/PL" onClick={() => { setEditCommercialInvoiceId(null); setActiveTab('new-commercial-invoice'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-commercial-invoice' ? 'bg-indigo-500 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><FileText className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New CI/PL</span>}</button>
+                        <button title="New CI/PL" onClick={() => { setEditCommercialInvoiceId(null); setActiveTab('new-commercial-invoice'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-commercial-invoice' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><FileText className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>New CI/PL</span>}</button>
                       )}
                       {checkAccess('commercial_invoices', 'view') && showModule('ci/pl') && (
-                        <button title="CI/PL" onClick={() => setActiveTab('commercial-invoices-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'commercial-invoices-list' ? 'bg-indigo-500 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>CI/PL</span>}</button>
+                        <button title="CI/PL" onClick={() => setActiveTab('commercial-invoices-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'commercial-invoices-list' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>CI/PL</span>}</button>
                       )}
                     </>
                   )}
@@ -9353,13 +9399,13 @@ export default function App() {
                   {(!collapsedGroups.returns || isSidebarCollapsed || !!moduleSearch) && (
                     <>
                       {checkAccess('returns', 'create') && showModule('issue return note') && (
-                        <button title="Issue Return Note" onClick={() => { setEditReturnId(null); setActiveTab('new-return'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-return' ? 'bg-orange-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><Undo2 className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Issue Return Note</span>}</button>
+                        <button title="Issue Return Note" onClick={() => { setEditReturnId(null); setActiveTab('new-return'); }} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'new-return' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><Undo2 className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Issue Return Note</span>}</button>
                       )}
                       {checkAccess('returns', 'view') && showModule('return history') && (
-                        <button title="Return History" onClick={() => setActiveTab('return-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'return-list' ? 'bg-orange-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Return History</span>}</button>
+                        <button title="Return History" onClick={() => setActiveTab('return-list')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'return-list' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><List className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Return History</span>}</button>
                       )}
                       {checkAccess('inventory', 'view') && showModule('active inventory') && (
-                        <button title="Active Inventory" onClick={() => setActiveTab('inventory')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'inventory' ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><FileText className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Active Inventory</span>}</button>
+                        <button title="Active Inventory" onClick={() => setActiveTab('inventory')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'inventory' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><FileText className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Active Inventory</span>}</button>
                       )}
                     </>
                   )}
@@ -9382,17 +9428,17 @@ export default function App() {
                   {(!collapsedGroups.billing || isSidebarCollapsed || !!moduleSearch) && (
                     <>
                       {checkAccess('vendor_bills', 'view') && showModule('vendor bills') && (
-                        <button title="Vendor Bills" onClick={() => setActiveTab('vendor-bills')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'vendor-bills' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}>
+                        <button title="Vendor Bills" onClick={() => setActiveTab('vendor-bills')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'vendor-bills' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}>
                           <FileText className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Vendor Bills</span>}
                         </button>
                       )}
                       {checkAccess('cost_recovery', 'view') && showModule('cost recovery') && (
-                        <button title="Container P&L" onClick={() => setActiveTab('cost-recovery')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'cost-recovery' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}>
+                        <button title="Container P&L" onClick={() => setActiveTab('cost-recovery')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'cost-recovery' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}>
                           <FileText className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Container P&L</span>}
                         </button>
                       )}
                       {checkAccess('accounting', 'view') && showModule('accounting') && (
-                        <button title="Accounting Integration" onClick={() => setActiveTab('accounting')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'accounting' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}>
+                        <button title="Accounting Integration" onClick={() => setActiveTab('accounting')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'accounting' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}>
                           <FileDown className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Acct Integration</span>}
                         </button>
                       )}
@@ -9417,10 +9463,10 @@ export default function App() {
                   {(!collapsedGroups.systemSetup || isSidebarCollapsed || !!moduleSearch) && (
                     <>
                       {showModule('master data') && (
-                        <button title="Master Data" onClick={() => setActiveTab('master-data')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'master-data' ? 'bg-purple-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><Database className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Master Data</span>}</button>
+                        <button title="Master Data" onClick={() => setActiveTab('master-data')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'master-data' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><Database className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Master Data</span>}</button>
                       )}
                       {checkAccess('reports', 'view') && showModule('reports') && (
-                        <button title="Reports" onClick={() => setActiveTab('reports')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'reports' ? 'bg-purple-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><FileText className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Reports</span>}</button>
+                        <button title="Reports" onClick={() => setActiveTab('reports')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'reports' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><FileText className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Reports</span>}</button>
                       )}
                     </>
                   )}
@@ -9443,10 +9489,10 @@ export default function App() {
                   {(!collapsedGroups.superAdmin || isSidebarCollapsed || !!moduleSearch) && (
                     <>
                       {showModule('system controls') && (
-                        <button title="System Controls" onClick={() => setActiveTab('sys-admin')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'sys-admin' ? 'bg-red-600 text-white' : 'hover:bg-slate-800 hover:text-red-400'}`}><Settings className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>System Controls</span>}</button>
+                        <button title="System Controls" onClick={() => setActiveTab('sys-admin')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'sys-admin' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><Settings className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>System Controls</span>}</button>
                       )}
                       {showModule('activity logs') && (
-                        <button title="Activity Logs" onClick={() => setActiveTab('activity-logs')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'activity-logs' ? 'bg-red-600 text-white' : 'hover:bg-slate-800 hover:text-red-400'}`}><ClipboardList className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Activity Logs</span>}</button>
+                        <button title="Activity Logs" onClick={() => setActiveTab('activity-logs')} className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'space-x-3 px-4 py-3'} rounded-lg transition-colors ${activeTab === 'activity-logs' ? getSidebarThemeClasses(appTheme.sidebar).active : getSidebarThemeClasses(appTheme.sidebar).hover}`}><ClipboardList className="w-5 h-5 min-w-[20px]" /> {!isSidebarCollapsed && <span>Activity Logs</span>}</button>
                       )}
                     </>
                   )}
@@ -9519,7 +9565,8 @@ export default function App() {
                      </span>
                    )}
                 </button>
-                <div className="flex items-center space-x-2 border-r border-slate-200 pr-4">
+                <ThemePicker />
+                <div className="flex items-center space-x-2 border-r border-slate-200 pr-4 pl-4">
                   <UserCircle className="w-5 h-5 text-blue-600" />
                   <span className="text-sm font-bold text-slate-700">{currentUser.username}</span>
                 </div>
