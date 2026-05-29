@@ -4134,9 +4134,16 @@ const PickupForm = () => {
         </div>
       </div>
       <ActivityHistory recordId={formData.id} />
-      <div className="flex justify-end space-x-3 pt-6 mt-6 border-t border-slate-200">
+      <div className="flex flex-col sm:flex-row items-center sm:justify-between w-full pt-6 mt-6 border-t border-slate-200 gap-4">
+        <div>
+          {editPickupId && checkAccess('pickups', 'print') && (
+            <button onClick={() => setPrintingPickupNote(pickups.find(p => p.id === editPickupId))} className="flex items-center space-x-2 bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-colors">
+              <Printer className="w-5 h-5" /><span>Print Pickup Note</span>
+            </button>
+          )}
+        </div>
         <button onClick={savePickup} className="flex items-center space-x-2 bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-indigo-700 transition shadow-md hover:shadow-lg">
-          <Save className="w-5 h-5"/> <span>Save Pickup Request</span>
+          <Save className="w-5 h-5"/> <span>{editPickupId ? 'Update Pickup Request' : 'Save Pickup Request'}</span>
         </button>
       </div>
     </div>
@@ -4331,7 +4338,7 @@ const PickupList = () => {
 const ReceiptForm = () => {
   const { 
     checkAccess, editReceiptId, receipts, setReceipts, ports, companies, 
-    showMessage, generateShipmentId, receiptCountersMap, setReceiptCountersMap, setPrintingReceipt, 
+    showMessage, generateShipmentId, receiptCountersMap, setReceiptCountersMap, setPrintingReceipt, setPrintingA4Receipt, 
     setActiveTab, calculateCBM, setEditReceiptId,
     convertPickupToReceiptData, setConvertPickupToReceiptData,
     pickups, setPickups, logActivity, pushNotificationToRelatedUsers, uoms
@@ -4862,12 +4869,17 @@ const ReceiptForm = () => {
         </div>
       </div>
       <ActivityHistory recordId={formData.id} />
-      <div className="flex items-center justify-between mt-4">
+      <div className="flex flex-col sm:flex-row items-center sm:justify-between w-full mt-4 gap-4">
         <div>
           {editReceiptId && checkAccess('receipts', 'print') && (
-            <button onClick={() => setPrintingReceipt(receipts.find(r => r.id === editReceiptId))} className="flex items-center space-x-2 bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-colors">
-              <Printer className="w-5 h-5" /><span>Print Labels</span>
-            </button>
+            <div className="flex space-x-2">
+              <button onClick={() => setPrintingA4Receipt(receipts.find(r => r.id === editReceiptId))} className="flex items-center space-x-2 bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-colors">
+                <FileDown className="w-5 h-5" /><span>Print GRN</span>
+              </button>
+              <button onClick={() => setPrintingReceipt(receipts.find(r => r.id === editReceiptId))} className="flex items-center space-x-2 bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-colors">
+                <Printer className="w-5 h-5" /><span>Print Labels</span>
+              </button>
+            </div>
           )}
         </div>
         <button onClick={saveReceipt} className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium shadow-sm hover:bg-blue-700 transition-colors"><Save className="w-5 h-5" /><span>{editReceiptId ? 'Update Shipment' : 'Save Shipment & Print'}</span></button>
@@ -5134,7 +5146,7 @@ const ActiveRouteSummary = () => {
 const ManifestForm = () => {
   const { 
     checkAccess, editManifestId, manifests, setManifests, setEditManifestId, 
-    setActiveTab, ports, getActiveInventory, generateManifestNo, generateLineHBL, 
+    setActiveTab, ports, setPrintingPackingList, setPrintingDeliveryOrders, getActiveInventory, generateManifestNo, generateLineHBL, 
     hblCountersMap, setHblCountersMap, showMessage, manifestCountersMap, setManifestCountersMap,
     containerBookings, companies, containerTypes, fclTemplates, logActivity, pushNotificationToRelatedUsers, currencies, db, doc, setDoc, uoms
   } = React.useContext(AppContext);
@@ -5799,9 +5811,23 @@ const ManifestForm = () => {
               )}
             </div>
             <div className="pt-4 mt-4 border-t border-slate-200">
-              <button onClick={saveManifest} className="w-full flex items-center justify-center space-x-2 bg-teal-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-teal-700">
-                <Save className="w-5 h-5" /><span>Save Container Manifest</span>
-              </button>
+              <div className="flex flex-col sm:flex-row items-center sm:justify-between w-full gap-4">
+                <div>
+                  {editManifestId && checkAccess('manifests', 'print') && (
+                    <div className="flex space-x-2">
+                       <button onClick={() => setPrintingPackingList(manifests.find(m => m.id === editManifestId))} className="flex items-center space-x-2 bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-colors">
+                         <FileText className="w-5 h-5" /><span>Print Packing List</span>
+                       </button>
+                       <button onClick={() => setPrintingDeliveryOrders(manifests.find(m => m.id === editManifestId))} className="flex items-center space-x-2 bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-colors">
+                         <ClipboardList className="w-5 h-5" /><span>Print Delivery Orders</span>
+                       </button>
+                    </div>
+                  )}
+                </div>
+                <button onClick={saveManifest} className="flex items-center space-x-2 bg-teal-600 text-white px-6 py-2.5 rounded-lg font-medium shadow-sm hover:bg-teal-700">
+                  <Save className="w-5 h-5" /><span>{editManifestId ? 'Update Container Manifest' : 'Save Container Manifest'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -5920,9 +5946,20 @@ const ManifestForm = () => {
             )}
 
             <div className="pt-6 mt-6 border-t border-slate-200">
-              <button onClick={saveManifest} className="w-full flex items-center justify-center space-x-2 bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700">
-                <Save className="w-5 h-5" /><span>Save FCL Container</span>
-              </button>
+              <div className="flex flex-col sm:flex-row items-center sm:justify-between w-full gap-4">
+                <div>
+                  {editManifestId && checkAccess('manifests', 'print') && (
+                    <div className="flex space-x-2">
+                       <button onClick={() => setPrintingPackingList(manifests.find(m => m.id === editManifestId))} className="flex items-center space-x-2 bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-colors">
+                         <FileText className="w-5 h-5" /><span>Print Packing List</span>
+                       </button>
+                    </div>
+                  )}
+                </div>
+                <button onClick={saveManifest} className="flex items-center space-x-2 bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium shadow-sm hover:bg-indigo-700">
+                  <Save className="w-5 h-5" /><span>{editManifestId ? 'Update FCL Container' : 'Save FCL Container'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -6636,7 +6673,7 @@ const HaulierBookingList = () => {
 const ContainerBookingForm = () => {
   const { 
     checkAccess, editBookingId, containerBookings, setContainerBookings, setEditBookingId, 
-    setActiveTab, ports, showMessage, containerTypes, generateBookingNo, setBookingCounter, bookingCounter, companies, logActivity
+    setActiveTab, ports, showMessage, containerTypes, generateBookingNo, setBookingCounter, bookingCounter, companies, logActivity, setPrintingBookingForm
   } = React.useContext(AppContext);
 
   const [formData, setFormData] = useState({
@@ -6844,9 +6881,18 @@ const ContainerBookingForm = () => {
       
       <datalist id="portListBooking">{ports.map(p => <option key={p.id} value={p.name}>{p.name} ({p.country})</option>)}</datalist>
       {editBookingId && <ActivityHistory recordId={editBookingId} />}
-      <div className="flex justify-end space-x-3 pt-4">
-        <button onClick={() => { setEditBookingId(null); setActiveTab('booking-list'); (window.closeMobileMenu ? window.closeMobileMenu() : null); }} className="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition">Cancel</button>
-        <button onClick={save} className="px-8 py-2 bg-sky-600 text-white rounded-lg flex items-center space-x-2 hover:bg-sky-700 transition shadow-sm font-medium"><Save className="w-5 h-5 mr-1" /> Save Booking</button>
+      <div className="flex flex-col sm:flex-row items-center sm:justify-between w-full pt-4 gap-4">
+        <div>
+          {editBookingId && (
+            <button onClick={() => setPrintingBookingForm(containerBookings.find(b => b.id === editBookingId))} className="flex items-center space-x-2 bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-colors">
+              <Printer className="w-5 h-5" /><span>Print Booking Form</span>
+            </button>
+          )}
+        </div>
+        <div className="flex space-x-3">
+          <button onClick={() => { setEditBookingId(null); setActiveTab('booking-list'); (window.closeMobileMenu ? window.closeMobileMenu() : null); }} className="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition">Cancel</button>
+          <button onClick={save} className="px-8 py-2 bg-sky-600 text-white rounded-lg flex items-center space-x-2 hover:bg-sky-700 transition shadow-sm font-medium"><Save className="w-5 h-5 mr-1" /> Save Booking</button>
+        </div>
       </div>
     </div>
   );
@@ -7002,7 +7048,7 @@ const ContainerBookingList = () => {
 const ReturnNoteForm = () => {
   const { 
     checkAccess, editReturnId, returns, setReturns, setEditReturnId, setActiveTab, 
-    receipts, manifests, showMessage, generateReturnNo, setReturnCounter, returnCounter, logActivity, uoms
+    receipts, manifests, showMessage, generateReturnNo, setReturnCounter, returnCounter, logActivity, uoms, setPrintingReturnNote
   } = React.useContext(AppContext);
 
   if (!checkAccess('returns', 'create') && !editReturnId) return <div className="p-8 text-center text-slate-500">You do not have permission to create returns.</div>;
@@ -7279,7 +7325,14 @@ const ReturnNoteForm = () => {
                 </tbody>
               </table>
             </div>
-            <div className="flex justify-end mt-6">
+            <div className="flex flex-col sm:flex-row items-center sm:justify-between w-full mt-6 gap-4">
+              <div>
+                {editReturnId && checkAccess('returns', 'print') && (
+                  <button onClick={() => setPrintingReturnNote(returns.find(r => r.id === editReturnId))} className="flex items-center space-x-2 bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-colors">
+                    <Printer className="w-5 h-5" /><span>Print Return Note</span>
+                  </button>
+                )}
+              </div>
               <button onClick={saveReturn} className="flex items-center space-x-2 bg-orange-500 text-white px-6 py-2.5 rounded-lg shadow-sm hover:bg-orange-600 font-medium transition-colors">
                 <Undo2 className="w-5 h-5" /><span>{editReturnId ? 'Update Return Note' : 'Confirm Return Note'}</span>
               </button>
@@ -7602,7 +7655,7 @@ const PrintLabelsOverlay = () => {
   return (
     <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Thermal Labels (A6)</h3></div>
         <div className="flex space-x-3">
           <button onClick={() => setPrintingReceipt(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Cancel</button>
@@ -7709,7 +7762,7 @@ const PrintA4Overlay = () => {
   return (
     <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Goods Received Note</h3></div>
         <div className="flex items-center space-x-3">
            <button onClick={() => setPrintingA4Receipt(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
@@ -7798,7 +7851,7 @@ const PrintPackingListOverlay = () => {
   return (
     <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Packing List</h3></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingPackingList(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
@@ -7993,7 +8046,7 @@ const PrintDeliveryOrdersOverlay = () => {
   return (
     <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Delivery Orders</h3><p className="text-sm text-slate-500">Generated {groups.length} distinct D/O pages based on destinations.</p></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingDeliveryOrders(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
@@ -8099,7 +8152,7 @@ const PrintPickupNoteOverlay = () => {
   return (
     <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Pickup Note</h3></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingPickupNote(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
@@ -8628,7 +8681,7 @@ const PrintBookingFormOverlay = () => {
   return (
     <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Booking Form</h3></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingBookingForm(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
@@ -8710,7 +8763,7 @@ const PrintCommercialInvoiceOverlay = () => {
   return (
     <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div>
            <h3 className="font-bold text-lg text-slate-800">Print Commercial Invoice / Packing List</h3>
            <p className="text-slate-500 text-sm">Review document before printing.</p>
@@ -8876,7 +8929,7 @@ const PrintReturnNoteOverlay = () => {
   return (
     <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex items-center justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Return Note</h3></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingReturnNote(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>

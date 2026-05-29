@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Plus, Trash2, FileText, CheckCircle, PackagePlus, List, Ship, MapPin } from 'lucide-react';
+import { X, Save, Plus, Trash2, FileText, CheckCircle, PackagePlus, List, Ship, MapPin, Printer } from 'lucide-react';
 
 export const CommercialInvoiceForm = ({ AppContext }) => {
   const {
     checkAccess, editCommercialInvoiceId, commercialInvoices, 
     setEditCommercialInvoiceId, setActiveTab, showMessage, manifests, generateCommercialInvoiceNo,
     commercialInvoiceCountersMap, companies, receipts, logActivity, ActivityHistory,
-    db, doc, setDoc, handleFirestoreError, OperationType, formatDate
+    db, doc, setDoc, handleFirestoreError, OperationType, formatDate, setPrintingCommercialInvoice
   } = React.useContext(AppContext);
 
   if (!checkAccess('commercial_invoices', 'create') && !checkAccess('commercial_invoices', 'edit')) {
@@ -563,7 +563,14 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
       
       {editCommercialInvoiceId && <ActivityHistory recordId={editCommercialInvoiceId} />}
       
-      <div className="flex justify-end pt-4 pb-12">
+      <div className="flex flex-col sm:flex-row items-center sm:justify-between w-full pt-4 pb-12 gap-4">
+        <div>
+          {editCommercialInvoiceId && checkAccess('commercial_invoices', 'print') && (
+            <button onClick={() => setPrintingCommercialInvoice(commercialInvoices.find(c => c.id === editCommercialInvoiceId))} className="flex items-center space-x-2 bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200 px-4 py-3 rounded-xl font-medium shadow-sm transition-colors">
+              <Printer className="w-5 h-5" /><span>Print CI/PL</span>
+            </button>
+          )}
+        </div>
         <button onClick={saveInvoice} className="px-8 py-3 bg-blue-600 text-white rounded-xl shadow-lg border-b-4 border-blue-700 hover:bg-blue-500 font-bold text-lg flex items-center transition-all active:mt-1 active:border-b-0">
           <Save className="w-5 h-5 mr-2"/> {formData.id ? 'Update' : 'Save'} Invoice
         </button>
