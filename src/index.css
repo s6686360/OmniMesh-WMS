@@ -2,9 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Reset html2pdf overlay backgrounds strictly for dot matrix on screen and print */
+.a4-page, #report-print-area {
+  background-color: white !important;
+  color: #000 !important;
+  border-color: #000 !important;
+}
+.a4-page *, #report-print-area * {
+  background-color: transparent !important;
+  color: #000 !important;
+  border-color: #000 !important;
+}
+
 @media print {
   @page {
-    size: a4 portrait;
+    size: letter portrait;
     margin: 15mm 15mm 20mm 15mm;
   }
 
@@ -54,6 +66,13 @@
     background: transparent !important;
     display: block !important;
     position: relative !important;
+  }
+
+  /* Dot matrix enforcements */
+  #a4-print-area *, #print-area *, #report-print-area * {
+    color: #000 !important;
+    background-color: transparent !important;
+    border-color: #000 !important;
   }
 
   /* Prevent split row items across pages */

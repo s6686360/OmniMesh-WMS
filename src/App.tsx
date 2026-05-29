@@ -7995,9 +7995,9 @@ const PrintLabelsOverlay = () => {
   };
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-auto pt-10 px-4 sm:px-0 pb-20">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[8.5in] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Thermal Labels (A6)</h3></div>
         <div className="flex space-x-3">
           <button onClick={() => setPrintingReceipt(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Cancel</button>
@@ -8018,19 +8018,19 @@ const PrintLabelsOverlay = () => {
               </div>
               
               <div className="mb-3 pb-3 border-b border-slate-200">
-                <div className="flex flex-col"><span className="text-[10px] uppercase font-semibold text-slate-500">Consignor</span><span className="font-bold text-xs uppercase leading-tight truncate">{printingReceipt.consignor}</span></div>
+                <div className="flex flex-col"><span className="text-[10px] uppercase font-semibold text-black">Consignor</span><span className="font-bold text-xs uppercase leading-tight truncate">{printingReceipt.consignor}</span></div>
               </div>
 
               <div className="flex-1 flex flex-col space-y-2">
                 <div className="flex flex-col">
                   <span className="text-[10px] uppercase font-bold text-blue-600 mb-0.5">Deliver To (Consignee)</span>
                   <span className="font-black text-xl uppercase leading-none mb-1">{printingReceipt.consignee}</span>
-                  <span className="text-sm font-semibold text-slate-800 leading-snug max-h-32 overflow-hidden whitespace-pre-wrap">{printingReceipt.consigneeDeliveryAddress}</span>
+                  <span className="text-sm font-semibold text-black leading-snug max-h-32 overflow-hidden whitespace-pre-wrap">{printingReceipt.consigneeDeliveryAddress}</span>
                 </div>
                 <div className="flex flex-col pt-3 border-t border-dashed border-slate-300">
-                  <span className="text-[10px] uppercase font-semibold text-slate-500">Cargo Details</span>
+                  <span className="text-[10px] uppercase font-semibold text-black">Cargo Details</span>
                   <span className="font-bold text-sm uppercase truncate leading-tight">{pkg.product || 'UNNAMED'}</span>
-                  <div className="flex justify-between mt-1 text-[10px] font-mono text-slate-700">
+                  <div className="flex justify-between mt-1 text-[10px] font-mono text-black">
                     <span>Dim: {pkg.l || 0}x{pkg.w || 0}x{pkg.h || 0} cm</span>
                     <span>Unit Wgt: {pkg.weight || 0} kg</span>
                   </div>
@@ -8066,31 +8066,28 @@ const LetterheadHeader = ({ title = '', subtitle = '', rightNode = null, docType
   }
 
   return (
-    <div className="border-b-2 border-slate-200 pb-6 mb-6">
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-800">{lh.name || 'Company Name'}</h1>
-          <div className="text-xs text-slate-600 mt-1 space-y-0.5">
-            {lh.companyRegNo && <span>ROC: {lh.companyRegNo}</span>}
-            {lh.companyRegNo && lh.sstNo && <span className="mx-2">|</span>}
-            {lh.sstNo && <span>SST: {lh.sstNo}</span>}
+    <div className="border-b-2 border-slate-200 pb-4 mb-4 w-full">
+      <div className="flex justify-between items-start mb-2 w-full">
+        <div className="w-full">
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <h1 className="text-3xl font-black text-slate-800">{lh.name || 'Company Name'}</h1>
+            <div className="text-xs text-slate-600 flex items-center space-x-1">
+              {lh.companyRegNo && <span>ROC: {lh.companyRegNo}</span>}
+              {lh.companyRegNo && lh.sstNo && <span>|</span>}
+              {lh.sstNo && <span>SST: {lh.sstNo}</span>}
+            </div>
           </div>
-          <div className="text-xs text-slate-600 mt-2 max-w-sm space-y-0.5">
-            {lh.addressLine1 && <p>{lh.addressLine1}</p>}
-            {lh.addressLine2 && <p>{lh.addressLine2}</p>}
-            {lh.addressLine3 && <p>{lh.addressLine3}</p>}
-            <p className="mt-1">
-              {[lh.postalCode, lh.city, lh.state, lh.country].filter(Boolean).join(', ')}
-            </p>
+          <div className="text-xs text-slate-600 mt-2">
+            {[lh.addressLine1, lh.addressLine2, lh.addressLine3, lh.city, lh.postalCode, lh.state, lh.country].filter(Boolean).join(', ')}
           </div>
           {(lh.contactNumber || lh.email) && (
-             <div className="text-xs text-slate-600 mt-2 flex gap-4">
+             <div className="text-xs text-slate-600 mt-1 flex gap-4">
                {lh.contactNumber && <div><span className="font-semibold">Tel:</span> {lh.contactNumber}</div>}
                {lh.email && <div><span className="font-semibold">Email:</span> {lh.email}</div>}
              </div>
           )}
         </div>
-        <div className="text-right pt-2">{rightNode}</div>
+        {rightNode && <div className="text-right ml-4 border-l pl-4 border-slate-200 whitespace-nowrap">{rightNode}</div>}
       </div>
       <div><p className="text-lg font-bold uppercase text-slate-800 text-center">{subtitle}</p></div>
     </div>
@@ -8114,20 +8111,20 @@ const PrintA4Overlay = () => {
   const totalPages = lineChunks.length;
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-auto pt-10 px-4 sm:px-0 pb-20">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[8.5in] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Goods Received Note</h3></div>
         <div className="flex items-center space-x-3">
            <button onClick={() => setPrintingA4Receipt(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-           <button onClick={() => handleGeneratePDF('a4-print-area', `${printingA4Receipt.id}-GRN.pdf`, 'a4', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+           <button onClick={() => handleGeneratePDF('a4-print-area', `${printingA4Receipt.id}-GRN.pdf`, 'letter', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
            <button onClick={handlePrintRequest} className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors">Print</button>
         </div>
       </div>
-      <div id="a4-print-area" className="w-[210mm] max-w-full mx-auto pb-20 space-y-8">
+      <div id="a4-print-area" className="w-[8.5in] origin-top md:scale-100 max-w-none mx-auto pb-20 space-y-8">
         {lineChunks.map((chunk, pageIdx) => {
           return (
-            <div key={pageIdx} className="a4-page bg-white shadow-2xl border border-slate-200" style={{ width: '100%', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box', pageBreakAfter: 'always', breakAfter: 'always' }}>
+            <div key={pageIdx} className="a4-page bg-white shadow-2xl border border-slate-200" style={{ width: '100%', minHeight: '11in', padding: '15mm', boxSizing: 'border-box', pageBreakAfter: 'always', breakAfter: 'always' }}>
               
               <table className="print-layout-table w-full border-none border-collapse text-left text-sm">
                 <thead className="display-table-header-group">
@@ -8137,7 +8134,6 @@ const PrintA4Overlay = () => {
                         docType="GRN" 
                         title={printingA4Receipt.company} 
                         subtitle="Goods Received Note" 
-                        rightNode={<><p className="text-sm uppercase font-semibold">GRN ID</p><p className="text-2xl font-bold font-mono">{printingA4Receipt.id}</p></>} 
                       />
                       <div className="grid grid-cols-2 gap-8 mb-4 text-sm mt-4">
                         <div>
@@ -8150,6 +8146,7 @@ const PrintA4Overlay = () => {
                         <div>
                           <p className="text-xs uppercase font-bold border-b pb-1 mb-2">Details</p>
                           <div className="space-y-2">
+                            <div className="flex justify-between"><span>GRN No:</span> <span className="font-semibold">{printingA4Receipt.id}</span></div>
                             <div className="flex justify-between"><span>Generated Date:</span> <span className="font-semibold">{new Date().toLocaleDateString('en-GB')}</span></div>
                             <div className="flex justify-between"><span>Type:</span> <span className="font-semibold">{printingA4Receipt.transactionType}</span></div>
                             <div className="flex justify-between"><span>Routing:</span> <span className="font-semibold">{printingA4Receipt.pol || '-'} to {printingA4Receipt.pod || '-'}</span></div>
@@ -8158,7 +8155,7 @@ const PrintA4Overlay = () => {
                         </div>
                       </div>
                       {printingA4Receipt.grnRemarks && pageIdx === 0 && (
-                        <div className="mb-4 p-4 bg-slate-50 border border-slate-200">
+                        <div className="mb-4 p-4 bg-white border border-slate-200">
                           <p className="text-xs uppercase font-bold mb-1">Remarks</p>
                           <p className="text-sm whitespace-pre-wrap">{printingA4Receipt.grnRemarks}</p>
                         </div>
@@ -8172,19 +8169,19 @@ const PrintA4Overlay = () => {
                     <td className="border-none p-0 align-top text-left">
                       <div className="mb-0">
                         <table className="w-full text-left text-sm border-collapse">
-                          <thead><tr className="bg-slate-100"><th className="p-2 border">Description</th><th className="p-2 border text-center">Qty</th><th className="p-2 border text-right">Unit Wgt(kg)</th><th className="p-2 border text-right">Total Wgt(kg)</th><th className="p-2 border text-right">CBM</th></tr></thead>
+                          <thead><tr className="bg-white"><th className="p-2 border w-12 text-center">No.</th><th className="p-2 border">Description</th><th className="p-2 border text-center">Qty</th><th className="p-2 border text-right">Unit Wgt(kg)</th><th className="p-2 border text-right">Total Wgt(kg)</th><th className="p-2 border text-right">CBM</th></tr></thead>
                           <tbody>
                             {chunk.map((line, idx) => (
-                              <tr key={idx}><td className="p-2 border">{line.product}</td><td className="p-2 border text-center">{line.qty} {line.uom}</td><td className="p-2 border text-right">{line.weight}</td><td className="p-2 border text-right">{((parseFloat(line.weight) || 0) * (parseInt(line.qty) || 0)).toFixed(2)}</td><td className="p-2 border text-right">{(line.cbm || 0).toFixed(3)}</td></tr>
+                              <tr key={idx}><td className="p-2 border text-center">{(pageIdx * 8) + idx + 1}</td><td className="p-2 border">{line.product}</td><td className="p-2 border text-center">{line.qty} {line.uom}</td><td className="p-2 border text-right">{line.weight}</td><td className="p-2 border text-right">{((parseFloat(line.weight) || 0) * (parseInt(line.qty) || 0)).toFixed(2)}</td><td className="p-2 border text-right">{(line.cbm || 0).toFixed(3)}</td></tr>
                             ))}
                           </tbody>
                           {pageIdx === totalPages - 1 && (
-                            <tfoot className="bg-slate-50 font-bold border-t-2 border-slate-300">
+                            <tfoot className="bg-white font-bold border-t-2 border-slate-300">
                               <tr>
-                                <td colSpan={2} className="p-2 text-right text-slate-700">TOTAL:</td>
+                                <td colSpan={3} className="p-2 text-right text-black">TOTAL:</td>
                                 <td className="p-2 border text-right"></td>
-                                <td className="p-2 border text-right text-slate-800">{(printingA4Receipt.totalWeight || 0).toFixed(2)}</td>
-                                <td className="p-2 border text-right text-slate-800">{(printingA4Receipt.totalCBM || 0).toFixed(3)}</td>
+                                <td className="p-2 border text-right text-black">{(printingA4Receipt.totalWeight || 0).toFixed(2)}</td>
+                                <td className="p-2 border text-right text-black">{(printingA4Receipt.totalCBM || 0).toFixed(3)}</td>
                               </tr>
                             </tfoot>
                           )}
@@ -8199,7 +8196,7 @@ const PrintA4Overlay = () => {
                       <div className="text-sm">
                         {pageIdx === totalPages - 1 ? (
                           <>
-                            <p className="text-xs text-slate-500 text-center mb-12 italic">
+                            <p className="text-xs text-black text-center mb-12 italic">
                               This is a computer-generated document, no signature is required. <br />
                               Generated by {currentUser?.username || 'System'}
                             </p>
@@ -8220,12 +8217,12 @@ const PrintA4Overlay = () => {
                             </div>
                           </>
                         ) : (
-                          <div className="text-center text-slate-400 italic text-xs py-8">
+                          <div className="text-center text-black italic text-xs py-8">
                             Continued on next page...
                           </div>
                         )}
                         
-                        <div className="flex justify-between items-center text-xs text-slate-400 mt-8 pt-4 border-t border-slate-100 uppercase tracking-widest font-mono">
+                        <div className="flex justify-between items-center text-xs text-black mt-8 pt-4 border-t border-slate-100 uppercase tracking-widest font-mono">
                           <div>GRN No: {printingA4Receipt.id}</div>
                           <div>Page {pageIdx + 1} of {totalPages}</div>
                         </div>
@@ -8263,20 +8260,20 @@ const PrintPackingListOverlay = () => {
   const totalPages = lineChunks.length;
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-auto pt-10 px-4 sm:px-0 pb-20">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[8.5in] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Packing List</h3></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingPackingList(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-PL.pdf`, 'a4', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-PL.pdf`, 'letter', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">Print</button>
         </div>
       </div>
-      <div id="a4-print-area" className="w-[210mm] max-w-full mx-auto pb-20 space-y-8">
+      <div id="a4-print-area" className="w-[8.5in] origin-top md:scale-100 max-w-none mx-auto pb-20 space-y-8">
         {lineChunks.map((chunk, pageIdx) => {
           return (
-            <div key={pageIdx} className="a4-page bg-white shadow-2xl border border-slate-200" style={{ width: '100%', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box', pageBreakAfter: 'always', breakAfter: 'always' }}>
+            <div key={pageIdx} className="a4-page bg-white shadow-2xl border border-slate-200" style={{ width: '100%', minHeight: '11in', padding: '15mm', boxSizing: 'border-box', pageBreakAfter: 'always', breakAfter: 'always' }}>
               
               <table className="print-layout-table w-full border-none border-collapse text-left text-sm">
                 <thead className="display-table-header-group">
@@ -8288,7 +8285,7 @@ const PrintPackingListOverlay = () => {
                         rightNode={<><p className="text-sm uppercase font-semibold">Manifest No</p><p className="text-xl font-bold font-mono">{m.id}</p></>}
                       />
                       
-                      <div className="grid grid-cols-2 gap-4 mb-4 border border-slate-200 p-4 font-mono text-xs bg-slate-50 mt-4 text-left">
+                      <div className="grid grid-cols-2 gap-4 mb-4 border border-slate-200 p-4 font-mono text-xs bg-white mt-4 text-left">
                         <div>
                           <p><strong>MANIFEST NO:</strong> {m.id}</p>
                           <p><strong>TYPE:</strong> <span className={`px-2 rounded-sm border ${m.type === 'FCL' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-teal-50 border-teal-200 text-teal-700'}`}>{m.type || 'LCL'}</span></p>
@@ -8313,7 +8310,7 @@ const PrintPackingListOverlay = () => {
                     <td className="border-none p-0 align-top">
                       <table className="w-full text-left text-xs border-collapse">
                         <thead>
-                          <tr className="bg-slate-100 border-y-2 border-black">
+                          <tr className="bg-white border-y-2 border-black">
                             {m.type === 'FCL' ? (
                               <>
                                 <th className="p-2 border">Client Details</th>
@@ -8339,10 +8336,10 @@ const PrintPackingListOverlay = () => {
                           {isFCL ? (
                             chunk.map((p, i) => (
                               <tr key={i}>
-                                <td className="p-2 border font-semibold text-slate-800">
+                                <td className="p-2 border font-semibold text-black">
                                   Cust: {m.fclCustomer || '-'}<br/>Cne: {m.consignee || '-'}<br/>Cnr: {m.consignor || '-'}<br/>
                                 </td>
-                                <td className="p-2 border font-mono text-slate-600">{p.hsCode}</td>
+                                <td className="p-2 border font-mono text-black">{p.hsCode}</td>
                                 <td className="p-2 border">{p.description}</td>
                                 <td className="p-2 border text-center">{p.qty} {p.uom}</td>
                                 <td className="p-2 border text-right">{parseFloat(p.weight || 0).toFixed(2)}</td>
@@ -8355,11 +8352,11 @@ const PrintPackingListOverlay = () => {
                               const isGroupJ = (companies || []).find(cn => cn.name === l.customer)?.groupJSSTExempted;
                               return (
                                 <tr key={i}>
-                                  <td className="p-2 border font-semibold text-slate-800">
+                                  <td className="p-2 border font-semibold text-black">
                                      Cust: {l.customer || '-'}<br/>Cne: {receipt?.consignee || '-'}<br/>Cnr: {receipt?.consignor || '-'}<br/>
-                                     <span className="font-mono font-normal text-[10px] text-slate-500 mt-1 block">Ref: {l.receiptId}</span>
+                                     <span className="font-mono font-normal text-[10px] text-black mt-1 block">Ref: {l.receiptId}</span>
                                   </td>
-                                  <td className="p-2 border font-bold text-slate-700">{isPickedUp}</td>
+                                  <td className="p-2 border font-bold text-black">{isPickedUp}</td>
                                   <td className="p-2 border font-bold text-purple-700">{isGroupJ ? 'Yes' : ''}</td>
                                   <td className="p-2 border">{l.product}</td>
                                   <td className="p-2 border text-center">{l.loadQty} {l.uom}</td>
@@ -8371,14 +8368,14 @@ const PrintPackingListOverlay = () => {
                           )}
                           {pageIdx < totalPages - 1 && (
                             <tr>
-                              <td colSpan={isFCL ? 5 : 7} className="p-3 text-center text-slate-400 italic text-xs">
+                              <td colSpan={isFCL ? 5 : 7} className="p-3 text-center text-black italic text-xs">
                                 Continued on next page...
                               </td>
                             </tr>
                           )}
                         </tbody>
                         {pageIdx === totalPages - 1 && (
-                          <tfoot className="border-t-2 border-black font-bold text-sm bg-slate-50">
+                          <tfoot className="border-t-2 border-black font-bold text-sm bg-white">
                             {isFCL ? (
                               <tr>
                                 <td colSpan={3} className="p-3 text-right">TOTAL CARGO LOADED:</td>
@@ -8402,7 +8399,7 @@ const PrintPackingListOverlay = () => {
                 <tfoot className="display-table-footer-group">
                   <tr>
                     <td className="border-none p-0 pt-8">
-                      <div className="flex justify-between items-center text-xs text-slate-400 border-t border-slate-100 pt-4 uppercase tracking-widest font-mono">
+                      <div className="flex justify-between items-center text-xs text-black border-t border-slate-100 pt-4 uppercase tracking-widest font-mono">
                         <div>Manifest Ref: {m.id}</div>
                         <div>Page {pageIdx + 1} of {totalPages}</div>
                       </div>
@@ -8501,17 +8498,17 @@ const PrintDeliveryOrdersOverlay = () => {
   const groups = Object.values(doGroups);
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-auto pt-10 px-4 sm:px-0 pb-20">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[8.5in] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Delivery Orders</h3><p className="text-sm text-slate-500">Generated {groups.length} distinct D/O pages based on destinations.</p></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingDeliveryOrders(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-DO.pdf`, 'a4', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-DO.pdf`, 'letter', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors">Print All D/Os</button>
         </div>
       </div>
-      <div id="a4-print-area" className="w-[210mm] max-w-full mx-auto pb-20 space-y-8 text-left">
+      <div id="a4-print-area" className="w-[8.5in] origin-top md:scale-100 max-w-none mx-auto pb-20 space-y-8 text-left">
         {groups.map((group, gIdx) => {
           const manifestNoWithoutMNF = m.id.replace(/^MNF-?/, '');
 
@@ -8531,7 +8528,7 @@ const PrintDeliveryOrdersOverlay = () => {
             const doNumber = `DO-${manifestNoWithoutMNF}/${String(gIdx+1).padStart(3, '0')}`;
 
             return (
-              <div key={`${gIdx}_${pageIdx}`} className="a4-page bg-white shadow-2xl border border-slate-200 relative flex flex-col" style={{ width: '100%', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box', pageBreakAfter: 'always', breakAfter: 'always' }}>
+              <div key={`${gIdx}_${pageIdx}`} className="a4-page bg-white shadow-2xl border border-slate-200 relative flex flex-col" style={{ width: '100%', minHeight: '11in', padding: '15mm', boxSizing: 'border-box', pageBreakAfter: 'always', breakAfter: 'always' }}>
                 
                 <table className="print-layout-table w-full border-none border-collapse text-left text-sm">
                   <thead className="display-table-header-group">
@@ -8543,31 +8540,31 @@ const PrintDeliveryOrdersOverlay = () => {
                         />
                         
                         <div className="grid grid-cols-2 gap-8 mb-4 mt-4 text-xs">
-                          <div className="border p-3 border-slate-300 rounded bg-slate-50">
-                            <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Deliver To (Consignee):</p>
+                          <div className="border p-3 border-slate-300 rounded bg-white">
+                            <p className="text-[10px] uppercase font-bold text-black mb-1">Deliver To (Consignee):</p>
                             <p className="font-bold text-sm uppercase">{group.consignee || group.customer}</p>
-                            <p className="text-slate-600 mt-1 whitespace-pre-wrap leading-tight">{group.address}</p>
-                            <p className="text-slate-600 mt-2"><span className="font-semibold">Tel:</span> {group.consigneeContact || '-'}</p>
+                            <p className="text-black mt-1 whitespace-pre-wrap leading-tight">{group.address}</p>
+                            <p className="text-black mt-2"><span className="font-semibold">Tel:</span> {group.consigneeContact || '-'}</p>
                           </div>
                           <div className="border p-3 border-slate-300 rounded flex flex-col justify-between">
                             <div>
-                              <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Sender (Consignor):</p>
+                              <p className="text-[10px] uppercase font-bold text-black mb-1">Sender (Consignor):</p>
                               <p className="font-bold text-sm uppercase">{group.consignor}</p>
-                              <p className="text-slate-600 mt-1 whitespace-pre-wrap leading-tight">{group.consignorAddress}</p>
-                              <p className="text-slate-600 mt-2"><span className="font-semibold">Tel:</span> {group.consignorContact || '-'}</p>
+                              <p className="text-black mt-1 whitespace-pre-wrap leading-tight">{group.consignorAddress}</p>
+                              <p className="text-black mt-2"><span className="font-semibold">Tel:</span> {group.consignorContact || '-'}</p>
                             </div>
                           </div>
                         </div>
 
-                        <div className="flex flex-col font-mono text-[10px] border border-slate-300 rounded bg-slate-50 mb-4 divide-y divide-slate-300">
+                        <div className="flex flex-col font-mono text-[10px] border border-slate-300 rounded bg-white mb-4 divide-y divide-slate-300">
                           <div className="grid grid-cols-[1fr_2fr_2fr] divide-x divide-slate-300">
-                            <div className="p-2"><span className="text-slate-500 block">DATE:</span> <strong className="text-xs">{formatDate(new Date())}</strong></div>
-                            <div className="p-2"><span className="text-slate-500 block">MANIFEST NUMBER:</span> <strong className="text-xs">{m.id}</strong></div>
-                            <div className="p-2"><span className="text-slate-500 block">DO NUMBER:</span> <strong className="text-xs">{doNumber}</strong></div>
+                            <div className="p-2"><span className="text-black block">DATE:</span> <strong className="text-xs">{formatDate(new Date())}</strong></div>
+                            <div className="p-2"><span className="text-black block">MANIFEST NUMBER:</span> <strong className="text-xs">{m.id}</strong></div>
+                            <div className="p-2"><span className="text-black block">DO NUMBER:</span> <strong className="text-xs">{doNumber}</strong></div>
                           </div>
                           <div className="grid grid-cols-2 divide-x divide-slate-300">
-                            <div className="p-2"><span className="text-slate-500 block">CONTAINER NUMBER:</span> <strong className="text-xs">{m.containerNo || '-'}</strong></div>
-                            <div className="p-2"><span className="text-slate-500 block">MASTER BL NUMBER:</span> <strong className="text-xs break-all">{m.blNo || '-'}</strong></div>
+                            <div className="p-2"><span className="text-black block">CONTAINER NUMBER:</span> <strong className="text-xs">{m.containerNo || '-'}</strong></div>
+                            <div className="p-2"><span className="text-black block">MASTER BL NUMBER:</span> <strong className="text-xs break-all">{m.blNo || '-'}</strong></div>
                           </div>
                         </div>
                         <div className="h-2"></div>
@@ -8578,14 +8575,14 @@ const PrintDeliveryOrdersOverlay = () => {
                     <tr>
                       <td className="border-none p-0 align-top">
                         <table className="w-full text-left text-xs border-collapse">
-                          <thead><tr className="bg-slate-100 border-y border-slate-300"><th className="p-2 border">Item Description</th><th className="p-2 text-center border">Qty / UOM</th><th className="p-2 text-right border">CBM</th><th className="p-2 text-right border">WGT</th></tr></thead>
+                          <thead><tr className="bg-white border-y border-slate-300"><th className="p-2 border">Item Description</th><th className="p-2 text-center border">Qty / UOM</th><th className="p-2 text-right border">CBM</th><th className="p-2 text-right border">WGT</th></tr></thead>
                           <tbody className="divide-y divide-slate-200">
                             {chunk.map((l, i) => (
                               <tr key={i}>
                                 <td className="p-2 border">
                                   {l.product} 
-                                  <span className="text-[10px] text-slate-500 block mt-0.5">HBL: {l.hblNo || '-'}</span>
-                                  <span className="text-[10px] text-slate-500 block">Ref: {l.receiptId} | {l.shipperDoNo || '-'}</span>
+                                  <span className="text-[10px] text-black block mt-0.5">HBL: {l.hblNo || '-'}</span>
+                                  <span className="text-[10px] text-black block">Ref: {l.receiptId} | {l.shipperDoNo || '-'}</span>
                                 </td>
                                 <td className="p-2 text-center font-bold border">{l.loadQty} {l.uom}</td>
                                 <td className="p-2 text-right font-mono border">{((l.loadQty || 0) * (l.unitCbm || 0)).toFixed(3)}</td>
@@ -8594,7 +8591,7 @@ const PrintDeliveryOrdersOverlay = () => {
                             ))}
                           </tbody>
                           {pageIdx === totalPages - 1 && (
-                            <tfoot className="border-t border-slate-300 font-bold bg-slate-50">
+                            <tfoot className="border-t border-slate-300 font-bold bg-white">
                               <tr><td className="p-3 text-right">TOTAL DELIVERY:</td><td className="p-3 text-center text-lg">{group.totalQty}</td><td className="p-3 text-right">{(group.totalCBM || 0).toFixed(3)}</td><td className="p-3 text-right">{(group.totalWgt || 0).toFixed(2)}</td></tr>
                             </tfoot>
                           )}
@@ -8608,29 +8605,29 @@ const PrintDeliveryOrdersOverlay = () => {
                         {pageIdx === totalPages - 1 ? (
                           <div className="grid grid-cols-2 gap-12 text-xs print-avoid-break">
                             <div className="pt-2">
-                              <p className="font-bold text-slate-800 border-b-2 border-slate-200 pb-1 mb-4">Driver / Transporter</p>
+                              <p className="font-bold text-black border-b-2 border-slate-200 pb-1 mb-4">Driver / Transporter</p>
                               <div className="space-y-4">
-                                <div className="flex items-end"><span className="w-28 font-semibold text-slate-600">Transporter:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
-                                <div className="flex items-end"><span className="w-28 font-semibold text-slate-600">Driver Name:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
-                                <div className="flex items-end"><span className="w-28 font-semibold text-slate-600">NRIC:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
+                                <div className="flex items-end"><span className="w-28 font-semibold text-black">Transporter:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
+                                <div className="flex items-end"><span className="w-28 font-semibold text-black">Driver Name:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
+                                <div className="flex items-end"><span className="w-28 font-semibold text-black">NRIC:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
                               </div>
                             </div>
                             <div className="pt-2">
-                              <p className="font-bold text-slate-800 border-b-2 border-slate-200 pb-1 mb-4">Consignee Received Acknowledgement</p>
+                              <p className="font-bold text-black border-b-2 border-slate-200 pb-1 mb-4">Consignee Received Acknowledgement</p>
                               <div className="space-y-4">
-                                <div className="flex items-end"><span className="w-32 font-semibold text-slate-600">Company Stamp:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
-                                <div className="flex items-end"><span className="w-32 font-semibold text-slate-600">Receiver Name:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
-                                <div className="flex items-end"><span className="w-32 font-semibold text-slate-600">Date:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
+                                <div className="flex items-end"><span className="w-32 font-semibold text-black">Company Stamp:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
+                                <div className="flex items-end"><span className="w-32 font-semibold text-black">Receiver Name:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
+                                <div className="flex items-end"><span className="w-32 font-semibold text-black">Date:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
                               </div>
                             </div>
                           </div>
                         ) : (
-                          <div className="text-center text-slate-400 italic text-xs py-4">
+                          <div className="text-center text-black italic text-xs py-4">
                             Continued on next page...
                           </div>
                         )}
 
-                        <div className="flex justify-between items-center text-xs text-slate-400 border-t border-slate-100 mt-8 pt-4 uppercase tracking-widest font-mono">
+                        <div className="flex justify-between items-center text-xs text-black border-t border-slate-100 mt-8 pt-4 uppercase tracking-widest font-mono">
                           <div>DO No: {doNumber}</div>
                           <div>Page {pageIdx + 1} of {totalPages}</div>
                         </div>
@@ -8655,17 +8652,17 @@ const PrintPickupNoteOverlay = () => {
   const pickupsToPrint = Array.isArray(printingPickupNote) ? printingPickupNote : [printingPickupNote];
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-auto pt-10 px-4 sm:px-0 pb-20">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[8.5in] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Pickup Note</h3></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingPickupNote(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `Pickup-Note.pdf`, 'a4', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `Pickup-Note.pdf`, 'letter', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-indigo-800 text-white rounded hover:bg-indigo-900 transition-colors">Print Pickup Note</button>
         </div>
       </div>
-      <div id="a4-print-area" className="w-[210mm] max-w-full mx-auto pb-20 space-y-8 text-left">
+      <div id="a4-print-area" className="w-[8.5in] origin-top md:scale-100 max-w-none mx-auto pb-20 space-y-8 text-left">
         {pickupsToPrint.map((p, pIndex) => {
           const dropOffCompanyName = (companies || []).find(c => c.id === p.dropOffCompanyId)?.name || 'N/A';
           
@@ -8683,7 +8680,7 @@ const PrintPickupNoteOverlay = () => {
 
           return lineChunks.map((chunk, pageIdx) => {
             return (
-              <div key={`${p.id || pIndex}_${pageIdx}`} className="a4-page bg-white shadow-2xl border border-slate-200 relative flex flex-col" style={{ width: '100%', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box', pageBreakAfter: 'always', breakAfter: 'always' }}>
+              <div key={`${p.id || pIndex}_${pageIdx}`} className="a4-page bg-white shadow-2xl border border-slate-200 relative flex flex-col" style={{ width: '100%', minHeight: '11in', padding: '15mm', boxSizing: 'border-box', pageBreakAfter: 'always', breakAfter: 'always' }}>
                 
                 <table className="print-layout-table w-full border-none border-collapse text-left text-sm">
                   <thead className="display-table-header-group">
@@ -8692,44 +8689,43 @@ const PrintPickupNoteOverlay = () => {
                         <LetterheadHeader 
                           docType="PickupNote" 
                           subtitle="PICKUP NOTE"
-                          rightNode={
-                            <div className="text-right">
-                              <p className="font-mono text-lg font-bold text-indigo-700">{p.id}</p>
-                              <p className="font-mono text-sm font-semibold">{formatDate(p.date)}</p>
-                            </div>
-                          }
                         />
 
-                        <div className="grid grid-cols-2 gap-6 mb-4 mt-4 text-xs">
+                        <div className="flex justify-between items-center mt-2 mb-4 text-sm font-bold border-b border-slate-300 pb-2">
+                          <div><span className="text-black">PU No:</span> <span className="font-mono text-black">{p.id}</span></div>
+                          <div><span className="text-black">Date:</span> <span className="font-mono text-black">{formatDate(p.date)}</span></div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-6 mb-4 text-xs">
                           <div className="border p-3 border-slate-300 rounded">
-                            <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">PickUp From (Consignor)</p>
-                            <p className="font-bold text-sm uppercase text-slate-800">{p.consignorName || '-'}</p>
-                            <p className="text-slate-600 mt-1 whitespace-pre-wrap leading-relaxed">{p.pickupAddress}</p>
-                            {p.picContact && <p className="text-slate-600 mt-2 font-semibold">PIC/Contact: {p.picContact}</p>}
+                            <p className="text-[10px] uppercase font-bold text-black mb-1">PickUp From (Consignor)</p>
+                            <p className="font-bold text-sm uppercase text-black">{p.consignorName || '-'}</p>
+                            <p className="text-black mt-1 whitespace-pre-wrap leading-relaxed">{p.pickupAddress}</p>
+                            {p.picContact && <p className="text-black mt-2 font-semibold">PIC/Contact: {p.picContact}</p>}
                           </div>
                           <div className="border p-3 border-slate-300 rounded bg-indigo-50/50">
-                            <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Drop Off Location</p>
-                            <p className="font-bold text-sm uppercase text-slate-800">{dropOffCompanyName}</p>
-                            <p className="text-slate-600 mt-1 whitespace-pre-wrap leading-relaxed font-medium">{p.dropOffAddress}</p>
-                            {p.dropOffContact && <p className="text-slate-600 mt-2 font-semibold">PIC/Contact: {p.dropOffContact}</p>}
+                            <p className="text-[10px] uppercase font-bold text-black mb-1">Drop Off Location</p>
+                            <p className="font-bold text-sm uppercase text-black">{dropOffCompanyName}</p>
+                            <p className="text-black mt-1 whitespace-pre-wrap leading-relaxed font-medium">{p.dropOffAddress}</p>
+                            {p.dropOffContact && <p className="text-black mt-2 font-semibold">PIC/Contact: {p.dropOffContact}</p>}
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-6 mb-4 text-xs">
                           <div className="border p-3 border-slate-300 rounded">
-                            <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Customer</p>
-                            <p className="font-bold text-slate-800">{p.customerName || '-'}</p>
+                            <p className="text-[10px] uppercase font-bold text-black mb-1">Customer</p>
+                            <p className="font-bold text-black">{p.customerName || '-'}</p>
                           </div>
                           <div className="border p-3 border-slate-300 rounded">
-                            <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Consignee</p>
-                            <p className="font-bold text-slate-800">{p.consigneeName || '-'}</p>
+                            <p className="text-[10px] uppercase font-bold text-black mb-1">Consignee</p>
+                            <p className="font-bold text-black">{p.consigneeName || '-'}</p>
                           </div>
                         </div>
 
-                        <div className="mb-4 p-3 border border-slate-300 rounded text-xs bg-slate-50">
-                          <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Transporter Details</p>
-                          <p className="font-bold text-slate-800">{p.pickupPartyName || '-'}</p>
-                          <p className="text-slate-600">Truck: {p.truckDetails || '-'} &nbsp;|&nbsp; Driver Contact: {p.driverContact || '-'} &nbsp;|&nbsp; IC: {p.driverIC || '-'}</p>
+                        <div className="mb-4 p-3 border border-slate-300 rounded text-xs bg-white">
+                          <p className="text-[10px] uppercase font-bold text-black mb-1">Transporter Details</p>
+                          <p className="font-bold text-black">{p.pickupPartyName || '-'}</p>
+                          <p className="text-black">Truck: {p.truckDetails || '-'} &nbsp;|&nbsp; Driver Contact: {p.driverContact || '-'} &nbsp;|&nbsp; IC: {p.driverIC || '-'}</p>
                         </div>
                         <div className="h-2"></div>
                       </td>
@@ -8739,14 +8735,14 @@ const PrintPickupNoteOverlay = () => {
                     <tr>
                       <td className="border-none p-0 align-top">
                         <table className="w-full text-left text-xs border-collapse border border-slate-400 mb-6">
-                          <thead className="bg-slate-100">
+                          <thead className="bg-white">
                             <tr>
-                              <th className="border border-slate-300 p-2 font-bold w-12 text-center text-slate-700">No.</th>
-                              <th className="border border-slate-300 p-2 font-bold text-slate-700">Product / Commodity</th>
-                              <th className="border border-slate-300 p-2 font-bold text-center w-20 text-slate-700">Qty</th>
-                              <th className="border border-slate-300 p-2 font-bold text-center w-20 text-slate-700">UOM</th>
-                              <th className="border border-slate-300 p-2 font-bold text-right w-24 text-slate-700">Weight</th>
-                              <th className="border border-slate-300 p-2 font-bold text-right w-24 text-slate-700">CBM</th>
+                              <th className="border border-slate-300 p-2 font-bold w-12 text-center text-black">No.</th>
+                              <th className="border border-slate-300 p-2 font-bold text-black">Product / Commodity</th>
+                              <th className="border border-slate-300 p-2 font-bold text-center w-20 text-black">Qty</th>
+                              <th className="border border-slate-300 p-2 font-bold text-center w-20 text-black">UOM</th>
+                              <th className="border border-slate-300 p-2 font-bold text-right w-24 text-black">Weight</th>
+                              <th className="border border-slate-300 p-2 font-bold text-right w-24 text-black">CBM</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -8754,7 +8750,7 @@ const PrintPickupNoteOverlay = () => {
                               const rowGWeight = (parseFloat(line.weight) || 0) * (parseInt(line.qty) || 0);
                               return (
                                 <tr key={idx}>
-                                  <td className="border border-slate-300 p-2 text-center font-mono text-slate-500">{pageIdx * 6 + idx + 1}</td>
+                                  <td className="border border-slate-300 p-2 text-center font-mono text-black">{pageIdx * 6 + idx + 1}</td>
                                   <td className="border border-slate-300 p-2 font-medium">{line.product}</td>
                                   <td className="border border-slate-300 p-2 text-center">{line.qty}</td>
                                   <td className="border border-slate-300 p-2 text-center text-xs">{line.uom}</td>
@@ -8764,7 +8760,7 @@ const PrintPickupNoteOverlay = () => {
                               );
                             })}
                             {pageIdx === totalPages - 1 && (
-                              <tr className="bg-slate-50 font-bold">
+                              <tr className="bg-white font-bold">
                                 <td colSpan={2} className="border border-slate-300 p-2 text-right">TOTAL</td>
                                 <td className="border border-slate-300 p-2 text-center">{(p.lines || []).reduce((sum, l) => sum + (parseInt(l.qty) || 0), 0)}</td>
                                 <td className="border border-slate-300 p-2"></td>
@@ -8790,17 +8786,17 @@ const PrintPickupNoteOverlay = () => {
                             )}
 
                             <div className="text-center text-xs pt-4 print-avoid-break">
-                              <p className="text-sm text-slate-600 mb-1 font-medium">Generated by: <span className="font-bold text-base text-slate-900">{currentUser?.username || 'System'}</span></p>
-                              <p className="text-xs font-semibold text-slate-500 italic">This is computer generated, no signature required.</p>
+                              <p className="text-sm text-black mb-1 font-medium">Generated by: <span className="font-bold text-base text-slate-900">{currentUser?.username || 'System'}</span></p>
+                              <p className="text-xs font-semibold text-black italic">This is computer generated, no signature required.</p>
                             </div>
                           </>
                         ) : (
-                          <div className="text-center text-slate-400 italic text-xs py-4">
+                          <div className="text-center text-black italic text-xs py-4">
                             Continued on next page...
                           </div>
                         )}
 
-                        <div className="flex justify-between items-center text-xs text-slate-400 mt-8 pt-4 border-t border-slate-100 uppercase tracking-widest font-mono">
+                        <div className="flex justify-between items-center text-xs text-black mt-8 pt-4 border-t border-slate-100 uppercase tracking-widest font-mono">
                           <div>Pickup Ref: {p.id}</div>
                           <div>Page {pageIdx + 1} of {totalPages}</div>
                         </div>
@@ -9245,18 +9241,18 @@ const PrintBookingFormOverlay = () => {
   });
   
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-auto pt-10 px-4 sm:px-0 pb-20">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[8.5in] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Booking Form</h3></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingBookingForm(null)} className="px-4 py-2 border rounded transition-colors hover:bg-slate-50">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${b.id}-Booking.pdf`, 'a4', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${b.id}-Booking.pdf`, 'letter', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">Print To Liner</button>
         </div>
       </div>
-      <div id="a4-print-area" className="w-[210mm] max-w-full mx-auto pb-20 text-left">
-        <div className="a4-page bg-white shadow-2xl border border-slate-200" style={{ width: '100%', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box' }}>
+      <div id="a4-print-area" className="w-[8.5in] origin-top md:scale-100 max-w-none mx-auto pb-20 text-left">
+        <div className="a4-page bg-white shadow-2xl border border-slate-200" style={{ width: '100%', minHeight: '11in', padding: '15mm', boxSizing: 'border-box' }}>
           
           <table className="print-layout-table w-full border-none border-collapse text-left text-sm">
             <thead className="display-table-header-group">
@@ -9275,18 +9271,18 @@ const PrintBookingFormOverlay = () => {
               <tr>
                 <td className="border-none p-0 align-top">
                   <div className="space-y-6 text-sm">
-                     <div className="flex justify-between border-b pb-2"><span className="font-bold text-slate-600">Booking Ref (CBN)</span> <span className="font-semibold text-lg">{b.id}</span></div>
-                     <div className="flex justify-between border-b pb-2"><span className="font-bold text-slate-600">Route</span> <span className="font-semibold">{b.pol || '-'} to {b.pod || '-'}</span></div>
-                     <div className="flex justify-between border-b pb-2"><span className="font-bold text-slate-600">Expected Sailing Date</span> <span className="font-semibold">{b.expectedSailingDate ? formatDate(b.expectedSailingDate) : '-'}</span></div>
-                     <div className="flex justify-between border-b pb-2"><span className="font-bold text-slate-600">Vessel & Voyage</span> <span className="font-semibold">{b.vessel || '-'} {b.voyage || '-'}</span></div>
+                     <div className="flex justify-between border-b pb-2"><span className="font-bold text-black">Booking Ref (CBN)</span> <span className="font-semibold text-lg">{b.id}</span></div>
+                     <div className="flex justify-between border-b pb-2"><span className="font-bold text-black">Route</span> <span className="font-semibold">{b.pol || '-'} to {b.pod || '-'}</span></div>
+                     <div className="flex justify-between border-b pb-2"><span className="font-bold text-black">Expected Sailing Date</span> <span className="font-semibold">{b.expectedSailingDate ? formatDate(b.expectedSailingDate) : '-'}</span></div>
+                     <div className="flex justify-between border-b pb-2"><span className="font-bold text-black">Vessel & Voyage</span> <span className="font-semibold">{b.vessel || '-'} {b.voyage || '-'}</span></div>
                      
                      <div className="pt-6">
                        <h3 className="font-bold text-base mb-4 border-b pb-2">Containers Required</h3>
-                       <ul className="list-disc pl-6 space-y-2 font-semibold text-slate-800">
+                       <ul className="list-disc pl-6 space-y-2 font-semibold text-black">
                          {Object.entries(typeCounts).map(([type, cnt]) => (
                            <li key={type} className="text-lg">{cnt} x {type}</li>
                          ))}
-                         {Object.keys(typeCounts).length === 0 && <li className="text-slate-500 italic font-normal">No container types specified.</li>}
+                         {Object.keys(typeCounts).length === 0 && <li className="text-black italic font-normal">No container types specified.</li>}
                        </ul>
                      </div>
                   </div>
@@ -9297,10 +9293,10 @@ const PrintBookingFormOverlay = () => {
               <tr>
                 <td className="border-none p-0 pt-8">
                   <div className="pt-10 print-avoid-break">
-                     <p className="text-slate-500 text-xs italic">Please process the booking request for the above requirements to the related liner immediately.</p>
+                     <p className="text-black text-xs italic">Please process the booking request for the above requirements to the related liner immediately.</p>
                   </div>
                   
-                  <div className="flex justify-between items-center text-xs text-slate-400 border-t border-slate-100 mt-8 pt-4 uppercase tracking-widest font-mono">
+                  <div className="flex justify-between items-center text-xs text-black border-t border-slate-100 mt-8 pt-4 uppercase tracking-widest font-mono">
                     <div>Booking Ref: {b.id}</div>
                     <div className="print-page-number"></div>
                   </div>
@@ -9353,24 +9349,24 @@ const PrintCommercialInvoiceOverlay = () => {
   const cTypeStrs = Object.entries(cTypes).map(([k, v]) => `${k} x ${v}`).join(', ');
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-auto pt-10 px-4 sm:px-0 pb-20">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[8.5in] max-w-full sticky top-4 z-40 no-print gap-4">
         <div>
            <h3 className="font-bold text-lg text-slate-800">Print Commercial Invoice / Packing List</h3>
            <p className="text-slate-500 text-sm">Review document before printing.</p>
         </div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingCommercialInvoice(null)} className="px-4 py-2 border rounded font-medium text-slate-600 hover:bg-slate-50">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${printingCommercialInvoice.id}-CIPL.pdf`, 'a4', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors font-medium">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${printingCommercialInvoice.id}-CIPL.pdf`, 'letter', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors font-medium">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-emerald-600 text-white rounded font-medium shadow-sm hover:bg-emerald-700 flex items-center">
             <Printer className="w-4 h-4 mr-2" /> Print CI/PL
           </button>
         </div>
       </div>
 
-      <div id="a4-print-area" className="w-[210mm] max-w-full mx-auto pb-20 text-left">
-        <div className="a4-page bg-white shadow-2xl border border-slate-200" style={{ width: '100%', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box' }}>
+      <div id="a4-print-area" className="w-[8.5in] origin-top md:scale-100 max-w-none mx-auto pb-20 text-left">
+        <div className="a4-page bg-white shadow-2xl border border-slate-200" style={{ width: '100%', minHeight: '11in', padding: '15mm', boxSizing: 'border-box' }}>
           
           <table className="print-layout-table w-full border-none border-collapse text-left text-sm">
             <thead className="display-table-header-group">
@@ -9384,21 +9380,21 @@ const PrintCommercialInvoiceOverlay = () => {
                       <div className="text-right">
                         <h2 className="text-2xl font-black text-slate-900 uppercase tracking-widest mb-1">Invoice</h2>
                         <div className="text-[10px] space-y-0.5">
-                           <div><span className="font-semibold text-slate-600">Invoice No:</span> <span className="font-bold">{ci.id}</span></div>
-                           <div><span className="font-semibold text-slate-600">Date:</span> <span className="font-bold">{ci.invoiceDate}</span></div>
-                           {ci.poNumber && <div><span className="font-semibold text-slate-600">PO No:</span> <span className="font-bold">{ci.poNumber}</span></div>}
+                           <div><span className="font-semibold text-black">Invoice No:</span> <span className="font-bold">{ci.id}</span></div>
+                           <div><span className="font-semibold text-black">Date:</span> <span className="font-bold">{ci.invoiceDate}</span></div>
+                           {ci.poNumber && <div><span className="font-semibold text-black">PO No:</span> <span className="font-bold">{ci.poNumber}</span></div>}
                         </div>
                       </div>
                     }
                   />
 
-                  <div className="text-center font-bold text-sm my-4 tracking-widest uppercase border-y border-slate-300 py-1 bg-slate-50">Commercial Invoice / Packing List</div>
+                  <div className="text-center font-bold text-sm my-4 tracking-widest uppercase border-y border-slate-300 py-1 bg-white">Commercial Invoice / Packing List</div>
 
                   <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4 text-xs">
                     <div className="p-2 border border-slate-200 rounded">
-                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">Shipper / Exporter</div>
+                      <div className="text-[10px] font-bold text-black uppercase mb-1">Shipper / Exporter</div>
                       <div className="font-bold text-xs">{declCompany.name}</div>
-                      <div className="text-[10px] text-slate-600 whitespace-pre-wrap mt-1">
+                      <div className="text-[10px] text-black whitespace-pre-wrap mt-1">
                         {formatAddress({ 
                           line1: declCompany.addressLine1, 
                           line2: declCompany.addressLine2,
@@ -9411,9 +9407,9 @@ const PrintCommercialInvoiceOverlay = () => {
                       </div>
                     </div>
                     <div className="p-2 border border-slate-200 rounded">
-                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">Importer</div>
+                      <div className="text-[10px] font-bold text-black uppercase mb-1">Importer</div>
                       <div className="font-bold text-xs">{podConsigneeCompany.name}</div>
-                      <div className="text-[10px] text-slate-600 whitespace-pre-wrap mt-1">
+                      <div className="text-[10px] text-black whitespace-pre-wrap mt-1">
                         {formatAddress({ 
                           line1: podConsigneeCompany.addressLine1, 
                           line2: podConsigneeCompany.addressLine2,
@@ -9429,36 +9425,36 @@ const PrintCommercialInvoiceOverlay = () => {
 
                   <div className="grid grid-cols-4 border border-slate-200 mb-4 divide-x divide-slate-300 text-xs rounded overflow-hidden">
                      <div className="p-1.5 flex flex-col">
-                       <span className="text-[9px] font-bold text-slate-500 uppercase">Vessel / Voyage</span>
+                       <span className="text-[9px] font-bold text-black uppercase">Vessel / Voyage</span>
                        <span className="font-semibold mt-0.5">{ci.vessel || '-'} {ci.voyage || ''}</span>
                      </div>
                      <div className="p-1.5 flex flex-col">
-                       <span className="text-[9px] font-bold text-slate-500 uppercase">Port of Loading</span>
+                       <span className="text-[9px] font-bold text-black uppercase">Port of Loading</span>
                        <span className="font-semibold mt-0.5">{ci.pol || '-'}</span>
                      </div>
                      <div className="p-1.5 flex flex-col">
-                       <span className="text-[9px] font-bold text-slate-500 uppercase">Port of Discharge</span>
+                       <span className="text-[9px] font-bold text-black uppercase">Port of Discharge</span>
                        <span className="font-semibold mt-0.5">{ci.pod || '-'}</span>
                      </div>
                      <div className="p-1.5 flex flex-col">
-                       <span className="text-[9px] font-bold text-slate-500 uppercase">Incoterms</span>
+                       <span className="text-[9px] font-bold text-black uppercase">Incoterms</span>
                        <span className="font-semibold mt-0.5">{ci.incoterm || '-'}</span>
                      </div>
                      
                      <div className="p-1.5 flex flex-col border-t border-slate-250">
-                       <span className="text-[9px] font-bold text-slate-500 uppercase">BL NUMBER</span>
+                       <span className="text-[9px] font-bold text-black uppercase">BL NUMBER</span>
                        <span className="font-semibold mt-0.5">{ci.hblNo || '-'}</span>
                      </div>
                      <div className="p-1.5 flex flex-col border-t border-slate-250">
-                       <span className="text-[9px] font-bold text-slate-500 uppercase">LINER BOOKING No</span>
+                       <span className="text-[9px] font-bold text-black uppercase">LINER BOOKING No</span>
                        <span className="font-semibold mt-0.5">{linerBooking || '-'}</span>
                      </div>
                      <div className="p-1.5 flex flex-col border-t border-slate-250">
-                       <span className="text-[9px] font-bold text-slate-500 uppercase">JOB NO</span>
+                       <span className="text-[9px] font-bold text-black uppercase">JOB NO</span>
                        <span className="font-semibold mt-0.5">{jobNo || '-'}</span>
                      </div>
                      <div className="p-1.5 flex flex-col border-t border-slate-250">
-                       <span className="text-[9px] font-bold text-slate-500 uppercase">CONTAINERS</span>
+                       <span className="text-[9px] font-bold text-black uppercase">CONTAINERS</span>
                        <span className="font-semibold mt-0.5 break-all">{containerNumbers || '-'} {cTypeStrs ? `(${cTypeStrs})` : ''}</span>
                      </div>
                   </div>
@@ -9470,7 +9466,7 @@ const PrintCommercialInvoiceOverlay = () => {
               <tr>
                 <td className="border-none p-0 align-top">
                   <table className="w-full text-left border-collapse border border-slate-200 text-xs">
-                    <thead className="bg-slate-100 border-b border-slate-200">
+                    <thead className="bg-white border-b border-slate-200">
                       <tr>
                         <th className="p-2 font-bold border border-slate-200 w-12 text-center">No.</th>
                         <th className="p-2 font-bold border border-slate-200">Description of Goods</th>
@@ -9487,14 +9483,14 @@ const PrintCommercialInvoiceOverlay = () => {
                              <td className="p-2 border border-slate-200 text-center">{idx + 1}</td>
                              <td className="p-2 border border-slate-200 whitespace-pre-wrap">{line.product}</td>
                              <td className="p-2 border border-slate-200 text-center font-mono text-[10px]">{line.hsCode || '-'}</td>
-                             <td className="p-2 border border-slate-200 text-right">{line.qty} <span className="text-[10px] text-slate-500">{line.uom}</span></td>
+                             <td className="p-2 border border-slate-200 text-right">{line.qty} <span className="text-[10px] text-black">{line.uom}</span></td>
                              <td className="p-2 border border-slate-200 text-right font-mono">{(parseFloat(line.cbm) || 0).toFixed(3)}</td>
                              <td className="p-2 border border-slate-200 text-right font-mono">{(parseFloat(line.totalValue) || 0).toFixed(2)}</td>
                            </tr>
                          );
                       })}
                     </tbody>
-                    <tfoot className="border-t-2 border-slate-300 font-bold bg-slate-50">
+                    <tfoot className="border-t-2 border-slate-300 font-bold bg-white">
                       <tr>
                         <td colSpan={3} className="p-2 border border-slate-200 text-right text-[10px] uppercase">Total:</td>
                         <td className="p-2 border border-slate-200 text-right">
@@ -9516,11 +9512,11 @@ const PrintCommercialInvoiceOverlay = () => {
               <tr>
                 <td className="border-none p-0 pt-8">
                   <div className="text-center text-[10px] print-avoid-break pt-4">
-                     <p className="text-xs text-slate-600 mb-1 font-medium">Generated by: <span className="font-bold text-sm text-slate-900">{currentUser?.username || 'System'}</span></p>
-                     <p className="text-[10px] font-semibold text-slate-500 italic">This is computer generated, no signature required.</p>
+                     <p className="text-xs text-black mb-1 font-medium">Generated by: <span className="font-bold text-sm text-slate-900">{currentUser?.username || 'System'}</span></p>
+                     <p className="text-[10px] font-semibold text-black italic">This is computer generated, no signature required.</p>
                   </div>
 
-                  <div className="flex justify-between items-center text-xs text-slate-400 border-t border-slate-100 mt-8 pt-4 uppercase tracking-widest font-mono">
+                  <div className="flex justify-between items-center text-xs text-black border-t border-slate-100 mt-8 pt-4 uppercase tracking-widest font-mono">
                     <div>Invoice No: {ci.id}</div>
                     <div className="print-page-number"></div>
                   </div>
@@ -9543,17 +9539,17 @@ const PrintReturnNoteOverlay = () => {
   const receipt = (receipts || []).find(r => r.id === ret.receiptId) || {};
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-auto pt-10 px-4 sm:px-0 pb-20">
       
-      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
+      <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[8.5in] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Return Note</h3></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingReturnNote(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${ret.id}-ReturnNote.pdf`, 'a4', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${ret.id}-ReturnNote.pdf`, 'letter', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors">Print Return Note</button>
         </div>
       </div>
-      <div id="a4-print-area" className="w-[210mm] max-w-full mx-auto pb-20 text-left">
+      <div id="a4-print-area" className="w-[8.5in] origin-top md:scale-100 max-w-none mx-auto pb-20 text-left">
         {(() => {
           const chunkArray = (arr, size) => {
             const result = [];
@@ -9569,7 +9565,7 @@ const PrintReturnNoteOverlay = () => {
 
           return lineChunks.map((chunk, pageIdx) => {
             return (
-              <div key={`${ret.id}_${pageIdx}`} className="a4-page bg-white shadow-2xl border border-slate-200" style={{ width: '100%', minHeight: '297mm', padding: '15mm', boxSizing: 'border-box', pageBreakAfter: 'always', breakAfter: 'always' }}>
+              <div key={`${ret.id}_${pageIdx}`} className="a4-page bg-white shadow-2xl border border-slate-200" style={{ width: '100%', minHeight: '11in', padding: '15mm', boxSizing: 'border-box', pageBreakAfter: 'always', breakAfter: 'always' }}>
                 
                 <table className="print-layout-table w-full border-none border-collapse text-left text-sm">
                   <thead className="display-table-header-group">
@@ -9587,23 +9583,23 @@ const PrintReturnNoteOverlay = () => {
                         />
 
                         <div className="grid grid-cols-3 gap-6 mb-4 mt-4 text-xs">
-                          <div className="border p-3 border-slate-300 rounded bg-slate-50">
-                            <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Customer</p>
-                            <p className="font-bold text-sm uppercase text-slate-800">{receipt.customer || '-'}</p>
-                            <p className="text-slate-600 mt-2"><span className="font-semibold text-[10px]">Orig Shipment:</span> <br/>{ret.receiptId}</p>
+                          <div className="border p-3 border-slate-300 rounded bg-white">
+                            <p className="text-[10px] uppercase font-bold text-black mb-1">Customer</p>
+                            <p className="font-bold text-sm uppercase text-black">{receipt.customer || '-'}</p>
+                            <p className="text-black mt-2"><span className="font-semibold text-[10px]">Orig Shipment:</span> <br/>{ret.receiptId}</p>
                           </div>
                           <div className="border p-3 border-slate-300 rounded">
-                            <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Consignee</p>
-                            <p className="font-bold text-sm uppercase text-slate-800">{receipt.consignee || '-'}</p>
+                            <p className="text-[10px] uppercase font-bold text-black mb-1">Consignee</p>
+                            <p className="font-bold text-sm uppercase text-black">{receipt.consignee || '-'}</p>
                           </div>
                           <div className="border p-3 border-slate-300 rounded">
-                            <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Consignor</p>
-                            <p className="font-bold text-sm uppercase text-slate-800">{receipt.consignor || '-'}</p>
+                            <p className="text-[10px] uppercase font-bold text-black mb-1">Consignor</p>
+                            <p className="font-bold text-sm uppercase text-black">{receipt.consignor || '-'}</p>
                           </div>
                         </div>
 
                         <div className="mb-4 text-xs">
-                          <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Reason for Return:</p>
+                          <p className="text-[10px] uppercase font-bold text-black mb-1">Reason for Return:</p>
                           <div className="p-3 border border-slate-300 rounded bg-orange-50 text-orange-900 font-medium">
                             {ret.reason || 'No reason provided.'}
                           </div>
@@ -9617,7 +9613,7 @@ const PrintReturnNoteOverlay = () => {
                       <td className="border-none p-0 align-top">
                         <table className="w-full text-left text-xs border-collapse">
                           <thead>
-                            <tr className="bg-slate-100 border-y border-slate-300 font-bold">
+                            <tr className="bg-white border-y border-slate-300 font-bold">
                               <th className="p-2 border">Item Description</th>
                               <th className="p-2 text-center border">UOM</th>
                               <th className="p-2 text-center border">Orig. Qty</th>
@@ -9639,12 +9635,12 @@ const PrintReturnNoteOverlay = () => {
                             ))}
                           </tbody>
                           {pageIdx === totalPages - 1 && (
-                            <tfoot className="border-t border-slate-350 font-bold bg-slate-50">
+                            <tfoot className="border-t border-slate-350 font-bold bg-white">
                               <tr>
-                                <td colSpan={3} className="p-3 text-right text-slate-700">TOTAL RETURNED:</td>
+                                <td colSpan={3} className="p-3 text-right text-black">TOTAL RETURNED:</td>
                                 <td className="p-3 text-center text-base text-orange-700">{ret.totalReturnQty}</td>
-                                <td className="p-3 text-right text-slate-700">{(ret.totalReturnCBM || 0).toFixed(3)}</td>
-                                <td className="p-3 text-right text-slate-700">{(ret.totalReturnWeight || 0).toFixed(2)}</td>
+                                <td className="p-3 text-right text-black">{(ret.totalReturnCBM || 0).toFixed(3)}</td>
+                                <td className="p-3 text-right text-black">{(ret.totalReturnWeight || 0).toFixed(2)}</td>
                               </tr>
                             </tfoot>
                           )}
@@ -9658,34 +9654,34 @@ const PrintReturnNoteOverlay = () => {
                         {pageIdx === totalPages - 1 ? (
                           <div className="grid grid-cols-2 gap-12 text-xs print-avoid-break">
                             <div className="pt-2">
-                              <p className="font-bold text-slate-800 border-b-2 border-slate-200 pb-1 mb-4">
+                              <p className="font-bold text-black border-b-2 border-slate-200 pb-1 mb-4">
                                 Return and Issued By:<br/> <span className="text-sm text-blue-800 font-bold">{receipt.company || 'OmniMesh'}</span>
                               </p>
                               <div className="space-y-4 mt-4">
-                                <div className="flex items-end"><span className="w-28 font-semibold text-slate-600">Company Stamp:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
-                                <div className="flex items-end"><span className="w-28 font-semibold text-slate-600">Signature:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
-                                <div className="flex items-end"><span className="w-28 font-semibold text-slate-600">Date:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
+                                <div className="flex items-end"><span className="w-28 font-semibold text-black">Company Stamp:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
+                                <div className="flex items-end"><span className="w-28 font-semibold text-black">Signature:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
+                                <div className="flex items-end"><span className="w-28 font-semibold text-black">Date:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
                               </div>
                             </div>
                             <div className="pt-2">
-                              <p className="font-bold text-slate-800 border-b-2 border-slate-200 pb-1 mb-4">
+                              <p className="font-bold text-black border-b-2 border-slate-200 pb-1 mb-4">
                                 Received By / On behalf of:<br/> <span className="text-sm text-orange-850 font-semibold uppercase">{receipt.customer || 'Customer'}</span>
                               </p>
                               <div className="space-y-4 mt-4">
-                                <div className="flex items-end"><span className="w-32 font-semibold text-slate-600">Company Stamp:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
-                                <div className="flex items-end"><span className="w-32 font-semibold text-slate-600">Receiver Name:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
-                                <div className="flex items-end"><span className="w-32 font-semibold text-slate-600">Signature:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
-                                <div className="flex items-end"><span className="w-32 font-semibold text-slate-600">Date:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
+                                <div className="flex items-end"><span className="w-32 font-semibold text-black">Company Stamp:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
+                                <div className="flex items-end"><span className="w-32 font-semibold text-black">Receiver Name:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
+                                <div className="flex items-end"><span className="w-32 font-semibold text-black">Signature:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
+                                <div className="flex items-end"><span className="w-32 font-semibold text-black">Date:</span> <span className="flex-1 border-b border-dashed border-slate-400"></span></div>
                               </div>
                             </div>
                           </div>
                         ) : (
-                          <div className="text-center text-slate-400 italic text-xs py-4">
+                          <div className="text-center text-black italic text-xs py-4">
                             Continued on next page...
                           </div>
                         )}
 
-                        <div className="flex justify-between items-center text-xs text-slate-400 border-t border-slate-100 mt-8 pt-4 uppercase tracking-widest font-mono">
+                        <div className="flex justify-between items-center text-xs text-black border-t border-slate-100 mt-8 pt-4 uppercase tracking-widest font-mono">
                           <div>Return Ref: {ret.id}</div>
                           <div>Page {pageIdx + 1} of {totalPages}</div>
                         </div>
@@ -10442,7 +10438,7 @@ export default function App() {
     }
   };
 
-  const handleGeneratePDF = (elementId, filename = 'document.pdf', format = 'a4', margin = 10) => {
+  const handleGeneratePDF = (elementId, filename = 'document.pdf', format = 'letter', margin = 10) => {
     import('html2pdf.js').then((module) => {
       const html2pdf = (module.default ? module.default : module) as any;
       const element = document.getElementById(elementId);

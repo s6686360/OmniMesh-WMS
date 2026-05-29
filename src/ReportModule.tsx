@@ -168,25 +168,25 @@ export const ReportModule = ({ context }: any) => {
           </div>
        </div>
 
-       <div id="report-print-area" className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 overflow-x-auto min-h-[400px]">
+       <div id="report-print-area" className="bg-white p-6 rounded-lg shadow-sm border border-slate-200 overflow-x-auto min-h-[400px] w-[8.5in] max-w-none">
           <style>{`@media print { @page { size: landscape; margin: 10mm; } body { -webkit-print-color-adjust: exact; } }`}</style>
           <div className="mb-4 print:block">
-            <h2 className="text-2xl font-bold text-slate-800">{activeConf.title}</h2>
-            <p className="text-sm text-slate-500">Record Count: {activeConf.data.length}</p>
+            <h2 className="text-2xl font-bold text-black">{activeConf.title}</h2>
+            <p className="text-sm text-black">Record Count: {activeConf.data.length}</p>
           </div>
           <table className="w-full text-left text-sm border-collapse">
              <thead>
-               <tr className="bg-slate-100 border-b border-slate-300">
-                 {activeConf.cols.map((col: any, i: number) => <th key={i} className="p-3 font-semibold text-slate-700">{col}</th>)}
+               <tr className="bg-white border-b border-slate-300">
+                 {activeConf.cols.map((col: any, i: number) => <th key={i} className="p-3 font-semibold text-black">{col}</th>)}
                </tr>
              </thead>
              <tbody className="divide-y divide-slate-100">
                {activeConf.data.length === 0 ? (
-                 <tr><td colSpan={activeConf.cols.length} className="p-8 text-center text-slate-500">No data found matching the current filters.</td></tr>
+                 <tr><td colSpan={activeConf.cols.length} className="p-8 text-center text-black">No data found matching the current filters.</td></tr>
                ) : (
                  activeConf.data.map((row: any, i: number) => (
-                   <tr key={row.id || i} className="hover:bg-slate-50">
-                     {getRowData(activeReport, row).map((val, cellIdx) => <td key={cellIdx} className="p-3 text-slate-600 truncate max-w-[200px]" title={val}>{val}</td>)}
+                   <tr key={row.id || i} className="hover:bg-white">
+                     {getRowData(activeReport, row).map((val, cellIdx) => <td key={cellIdx} className="p-3 text-black truncate max-w-[200px]" title={val}>{val}</td>)}
                    </tr>
                  ))
                )}
