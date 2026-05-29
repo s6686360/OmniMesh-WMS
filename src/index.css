@@ -20,6 +20,11 @@
     padding: 0 !important;
   }
 
+  /* Hide main app containers when a print overlay is open */
+  body:has(.print-safe-modal) .main-app-container {
+    display: none !important;
+  }
+
   /* Hide screen elements during print */
   .no-print, .no-print *, .sticky {
     display: none !important;
@@ -74,7 +79,15 @@
   }
 
   /* Reset print wrappers to avoid layout shifting or downscaling */
-  #a4-print-area, #print-area {
+  #a4-print-area, #report-print-area {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  #print-area {
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -86,6 +99,12 @@
   .print-page-number::after {
     content: "Page " counter(page) " of " counter(pages);
   }
+}
+
+/* Global font override for print documents preview and PDF */
+#a4-print-area, #report-print-area,
+#a4-print-area *:not(.font-mono), #report-print-area *:not(.font-mono) {
+  font-family: Arial, Helvetica, sans-serif !important;
 }
 
 /* Global support for screen preview and PDF generators */

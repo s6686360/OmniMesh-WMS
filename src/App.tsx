@@ -7995,7 +7995,7 @@ const PrintLabelsOverlay = () => {
   };
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
       
       <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Thermal Labels (A6)</h3></div>
@@ -8114,7 +8114,7 @@ const PrintA4Overlay = () => {
   const totalPages = lineChunks.length;
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
       
       <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Goods Received Note</h3></div>
@@ -8263,7 +8263,7 @@ const PrintPackingListOverlay = () => {
   const totalPages = lineChunks.length;
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
       
       <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Packing List</h3></div>
@@ -8501,7 +8501,7 @@ const PrintDeliveryOrdersOverlay = () => {
   const groups = Object.values(doGroups);
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
       
       <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Delivery Orders</h3><p className="text-sm text-slate-500">Generated {groups.length} distinct D/O pages based on destinations.</p></div>
@@ -8655,7 +8655,7 @@ const PrintPickupNoteOverlay = () => {
   const pickupsToPrint = Array.isArray(printingPickupNote) ? printingPickupNote : [printingPickupNote];
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
       
       <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Pickup Note</h3></div>
@@ -9245,7 +9245,7 @@ const PrintBookingFormOverlay = () => {
   });
   
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
       
       <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Booking Form</h3></div>
@@ -9353,7 +9353,7 @@ const PrintCommercialInvoiceOverlay = () => {
   const cTypeStrs = Object.entries(cTypes).map(([k, v]) => `${k} x ${v}`).join(', ');
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
       
       <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div>
@@ -9543,7 +9543,7 @@ const PrintReturnNoteOverlay = () => {
   const receipt = (receipts || []).find(r => r.id === ret.receiptId) || {};
 
   return (
-    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20 no-print">
+    <div className="print-safe-modal fixed inset-0 bg-slate-900/80 z-50 flex flex-col items-center overflow-y-auto pt-10 pb-20">
       
       <div className="bg-white p-4 rounded-lg shadow-xl mb-8 flex flex-col sm:flex-row items-center sm:justify-between w-[210mm] max-w-full sticky top-4 z-40 no-print gap-4">
         <div><h3 className="font-bold text-lg text-slate-800">Print Return Note</h3></div>
@@ -9973,8 +9973,8 @@ const InboxSidebar = () => {
 
   return (
     <>
-      <div className="fixed inset-0 bg-slate-900/50 z-[100]" onClick={() => setInboxOpen(false)}></div>
-      <div className="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-[110] flex flex-col transform transition-transform border-l border-slate-200">
+      <div className="fixed inset-0 bg-slate-900/50 z-[100] no-print" onClick={() => setInboxOpen(false)}></div>
+      <div className="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-[110] flex flex-col transform transition-transform border-l border-slate-200 no-print">
         <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-slate-50">
           <div className="flex items-center space-x-3">
              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -10708,7 +10708,7 @@ export default function App() {
           )}
           
           {isMobileMenuOpen && (
-            <div className="fixed inset-0 bg-slate-900/50 z-40 xl:hidden" onClick={() => (window.closeMobileMenu ? window.closeMobileMenu() : null)}></div>
+            <div className="fixed inset-0 bg-slate-900/50 z-40 xl:hidden no-print" onClick={() => (window.closeMobileMenu ? window.closeMobileMenu() : null)}></div>
           )}
 
           <div className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} ${getSidebarThemeClasses(appTheme.sidebar).bg} ${getSidebarThemeClasses(appTheme.sidebar).text} fixed inset-y-0 left-0 z-50 xl:relative flex flex-col overflow-y-auto no-print shadow-xl main-app-container transition-all duration-300 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} xl:translate-x-0`}>
