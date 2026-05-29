@@ -184,12 +184,12 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
   const declaredCompanies = (companies || []).filter(c => c.isDeclaredCompany);
   const consigneeCompanies = (companies || []).filter(c => c.isConsignee || c.isDeclaredCompany);
 
-  const confirmAndSave = () => {
+  const confirmAndSave = (isDraft = false) => {
     // Actually do the merge
-    mergeByHsCode(true); // pass true to indicate it's final save
+    mergeByHsCode(true, isDraft); // pass true to indicate it's final save
   };
 
-  const executeSave = (mergedLines) => {
+  const executeSave = (mergedLines, isDraft = false) => {
     const totalValue = mergedLines.reduce((sum, line) => sum + (parseFloat(line.totalValue) || 0), 0);
 
     const isNew = !formData.id;
@@ -231,6 +231,7 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
         const m = (manifests || []).find(x => x.id === mId);
         return (m && m.type === 'FCL') ? m.consignor : '';
       }, ''),
+      status: isDraft ? 'DRAFT' : (formData.status === 'DRAFT' ? 'NEW' : (formData.status || 'NEW')),
       lines: mergedLines,
       id: finalId,
       totalValue,
@@ -253,20 +254,22 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
     setActiveTab('commercial-invoices-list');
   };
 
-  const saveInvoice = () => {
-    if (!formData.declCompanyId) return showMessage('Declared Company is required');
-    if (!formData.manifestIds || formData.manifestIds.length === 0) return showMessage('Associated Manifest is required');
-    if (formData.lines.length === 0) return showMessage('Must have at least one line');
-    
-    // Check if any HS code is empty
-    if (formData.lines.some(l => !(l.hsCode || '').trim())) {
-      return showMessage("All items must have an HS Code assigned before saving.");
+  const saveInvoice = (isDraft = false) => {
+    if (!isDraft) {
+      if (!formData.declCompanyId) return showMessage('Declared Company is required');
+      if (!formData.manifestIds || formData.manifestIds.length === 0) return showMessage('Associated Manifest is required');
+      if (formData.lines.length === 0) return showMessage('Must have at least one line');
+      
+      // Check if any HS code is empty
+      if (formData.lines.some(l => !(l.hsCode || '').trim())) {
+        return showMessage("All items must have an HS Code assigned before saving.");
+      }
     }
 
-    mergeByHsCode(true); // Automatically merge and save
+    mergeByHsCode(true, isDraft); // Automatically merge and save
   };
 
-  const mergeByHsCode = (isSaving = false) => {
+  const mergeByHsCode = (isSaving = false, isDraft = false) => {
     const groups: { [key: string]: any } = {};
     formData.lines.forEach(l => {
       const code = (l.hsCode || '').trim();
@@ -320,7 +323,7 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
     
     setFormData({ ...formData, lines: mergedLines });
     if (isSaving === true) {
-      executeSave(mergedLines);
+      executeSave(mergedLines, isDraft);
     } else {
       showMessage('Lines merged by HS Code.', 'success');
     }
@@ -571,9 +574,14 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
             </button>
           )}
         </div>
-        <button onClick={saveInvoice} className="px-8 py-3 bg-blue-600 text-white rounded-xl shadow-lg border-b-4 border-blue-700 hover:bg-blue-500 font-bold text-lg flex items-center transition-all active:mt-1 active:border-b-0">
-          <Save className="w-5 h-5 mr-2"/> {formData.id ? 'Update' : 'Save'} Invoice
-        </button>
+        <div className="flex space-x-3">
+          <button onClick={() => saveInvoice(true)} className="px-6 py-3 border border-blue-600 text-blue-600 bg-white rounded-xl shadow-lg border-b-4 hover:bg-blue-50 font-bold text-lg flex items-center transition-all active:mt-1 active:border-b-0">
+            <Save className="w-5 h-5 mr-2"/> Save as Draft
+          </button>
+          <button onClick={() => saveInvoice(false)} className="px-8 py-3 bg-blue-600 text-white rounded-xl shadow-lg border-b-4 border-blue-700 hover:bg-blue-500 font-bold text-lg flex items-center transition-all active:mt-1 active:border-b-0">
+            <Save className="w-5 h-5 mr-2"/> {formData.id ? 'Update' : 'Save'} Invoice
+          </button>
+        </div>
       </div>
 
       {showMergePrompt && (
@@ -589,8 +597,8 @@ export const CommercialInvoiceForm = ({ AppContext }) => {
                </button>
              </div>
              <div className="flex justify-end gap-3 mt-8">
-                <button onClick={() => {setShowMergePrompt(false); executeSave(formData.lines);}} className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium">Save without Merging</button>
-                <button onClick={confirmAndSave} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm font-medium flex items-center gap-2"><CheckCircle className="w-4 h-4" /> Merge & Save</button>
+                <button onClick={() => {setShowMergePrompt(false); executeSave(formData.lines, false);}} className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium">Save without Merging</button>
+                <button onClick={() => confirmAndSave(false)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm font-medium flex items-center gap-2"><CheckCircle className="w-4 h-4" /> Merge & Save</button>
              </div>
           </div>
         </div>

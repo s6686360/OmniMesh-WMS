@@ -48,6 +48,7 @@ service cloud.firestore {
     match /letterheads/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /companies/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /ports/{id} { allow read: if true; allow write: if isSignedIn(); }
+    match /depots/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /warehouses/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /containerTypes/{id} { allow read: if true; allow write: if isSignedIn(); }
     match /uoms/{id} { allow read, write: if isSignedIn(); }

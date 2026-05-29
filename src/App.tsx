@@ -361,7 +361,7 @@ const DashboardView = () => {
     );
   }, [containerBookings, manifests, containerTypes, companies]);
 
-  const pendingPickupsCount = (pickups || []).filter(p => p.status === 'Open' || !p.linkedSid).length;
+  const pendingPickupsCount = (pickups || []).filter(p => p.status !== 'DRAFT' && p.status !== 'PICKED_UP' && p.status !== 'Linked' && !p.pickupPartyId && !p.pickupPartyName).length;
 
   return (
     <div className="space-y-6">
@@ -969,7 +969,7 @@ const TrackCargoView = () => {
 
 const MasterMaintenance = () => {
   const { 
-    checkAccess, companies, setCompanies, ports, setPorts, roles, setRoles, currencies, setCurrencies,
+    checkAccess, companies, setCompanies, ports, setPorts, depots, setDepots, roles, setRoles, currencies, setCurrencies,
     glCodes, setGlCodes, services, setServices, csvExportTemplates, setCsvExportTemplates, letterheads, setLetterheads,
     users, setUsers, warehouses, setWarehouses, containerTypes, setContainerTypes, showMessage, receipts, setReceipts, manifests, setManifests, fclTemplates, setFclTemplates, logActivity,
     storageZones, setStorageZones, storageRates, setStorageRates,
@@ -990,6 +990,7 @@ const MasterMaintenance = () => {
       items: [
         { id: 'companies', name: 'Companies (Partners)' }, 
         { id: 'ports', name: 'Ports (POL/POD)' }, 
+        { id: 'depots', name: 'Container Depots' },
         { id: 'locations', name: 'Locations' }
       ]
     },
@@ -1049,6 +1050,7 @@ const MasterMaintenance = () => {
     switch(activeMaster) {
       case 'companies': return { data: companies, setter: setCompanies, label: 'Company', isComplex: true };
       case 'ports': return { data: ports, setter: setPorts, label: 'Port (POL/POD)', isComplex: true };
+      case 'depots': return { data: depots, setter: setDepots, label: 'Container Depot', isComplex: true };
       case 'roles': return { data: roles, setter: setRoles, label: 'Role', isRole: true };
       case 'users': return { data: users, setter: setUsers, label: 'User', isUser: true };
       case 'warehouses': return { data: warehouses, setter: setWarehouses, label: 'Warehouse', isComplex: true };
@@ -1576,6 +1578,26 @@ const MasterMaintenance = () => {
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Port Name</label>
                   <input type="text" value={formData.portName || ''} onChange={(e) => updateForm('portName', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Port Klang" />
+                </div>
+              </>
+            )}
+
+            {activeMaster === 'depots' && (
+              <>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Depot Name <span className="text-red-500">*</span></label>
+                  <input type="text" value={formData.name || ''} onChange={(e) => updateForm('name', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Westports Depot A" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Assigned Port</label>
+                  <select value={formData.portId || ''} onChange={(e) => updateForm('portId', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md">
+                    <option value="">-- Select Port --</option>
+                    {(ports || []).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Address / Location</label>
+                  <input type="text" value={formData.address || ''} onChange={(e) => updateForm('address', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Lot 123, Pulau Indah" />
                 </div>
               </>
             )}
@@ -2566,6 +2588,7 @@ const MasterMaintenance = () => {
               {activeMaster === 'uoms' && <th className="p-3 text-sm font-semibold">Standard Unit of Measure</th>}
               {activeMaster === 'letterheads' && <th className="p-3 text-sm font-semibold">Company Info</th>}
               {activeMaster === 'ports' && <th className="p-3 text-sm font-semibold">Details</th>}
+              {activeMaster === 'depots' && <th className="p-3 text-sm font-semibold">Port / Address</th>}
               {activeMaster === 'fclTemplates' && <th className="p-3 text-sm font-semibold">POL / POD</th>}
               {activeMaster === 'users' && <th className="p-3 text-sm font-semibold">Assigned Role</th>}
               {activeMaster === 'roles' && <th className="p-3 text-sm font-semibold">Permissions</th>}
@@ -2614,6 +2637,12 @@ const MasterMaintenance = () => {
                   <td className="p-3 text-sm text-slate-600">
                     {item.portName ? <span className="font-semibold block">{item.portName}</span> : null}
                     {item.country || '-'}
+                  </td>
+                )}
+                {activeMaster === 'depots' && (
+                  <td className="p-3 text-sm text-slate-600">
+                    {item.portId ? <span className="font-semibold block px-2 py-1 bg-indigo-50 text-indigo-700 rounded w-max mb-1 text-xs">Port: {item.portId}</span> : null}
+                    {item.address || '-'}
                   </td>
                 )}
                 {activeMaster === 'currencies' && (
@@ -3730,7 +3759,7 @@ const PickupForm = () => {
   const { 
     checkAccess, editPickupId, pickups, setPickups, companies, warehouses,
     pickupCounter, setPickupCounter, generatePickupNo,
-    receipts, setEditPickupId, setActiveTab, showMessage,
+    receipts, setEditPickupId, setActiveTab, showMessage, ports,
     setPrintingPickupNote, logActivity, pushNotificationToRelatedUsers, uoms
   } = React.useContext(AppContext);
 
@@ -3741,6 +3770,7 @@ const PickupForm = () => {
     consigneeId: '', consigneeName: '', dropOffCompanyId: '', dropOffAddress: '', dropOffLocationId: '', dropOffContact: '',
     pickupPartyId: '', pickupPartyName: '',
     truckDetails: '', driverContact: '', driverIC: '',
+    pol: '', pod: '',
     linkedSid: '', remarks: '',
     status: 'NEW'
   });
@@ -3851,12 +3881,14 @@ const PickupForm = () => {
 
   const isLinked = !!formData.linkedSid;
 
-  const savePickup = () => {
-    if (!formData.customerId) return showMessage("Customer is required.");
-    if (!formData.consignorId) return showMessage("Consignor is required.");
+  const savePickup = (isDraft = false) => {
+    if (!isDraft) {
+      if (!formData.customerId) return showMessage("Customer is required.");
+      if (!formData.consignorId) return showMessage("Consignor is required.");
 
-    const invalidLine = lines.find(l => !l.product.trim() || !l.weight);
-    if (invalidLine) return showMessage("Please ensure all cargo lines have Product and Unit Weight.");
+      const invalidLine = lines.find(l => !l.product.trim() || !l.weight);
+      if (invalidLine) return showMessage("Please ensure all cargo lines have Product and Unit Weight.");
+    }
 
     const payload = {
       ...formData,
@@ -3864,11 +3896,20 @@ const PickupForm = () => {
       totalQty: lines.reduce((sum, l) => sum + (parseInt(l.qty) || 0), 0),
       totalCBM: lines.reduce((sum, l) => sum + l.cbm, 0),
       totalWeight: lines.reduce((sum, l) => sum + ((parseFloat(l.weight) || 0) * (parseInt(l.qty) || 0)), 0),
-      status: formData.linkedSid ? 'Linked' : (formData.status || 'NEW')
+      status: formData.linkedSid ? 'Linked' : (isDraft ? 'DRAFT' : (formData.status === 'DRAFT' ? 'NEW' : (formData.status || 'NEW')))
     };
 
     setDoc(doc(db, 'pickups', payload.id), payload)
       .catch(err => handleFirestoreError(err, OperationType.WRITE, `pickups/${payload.id}`));
+
+    if (payload.linkedSid) {
+      updateDoc(doc(db, 'receipts', payload.linkedSid), {
+        lines: payload.lines.map(l => ({...l})),
+        totalQty: payload.totalQty,
+        totalCBM: payload.totalCBM,
+        totalWeight: payload.totalWeight
+      }).catch(err => handleFirestoreError(err, OperationType.UPDATE, `receipts/${payload.linkedSid}`));
+    }
 
     if (editPickupId) {
       logActivity('UPDATE', 'Pickup Requests', payload.id, 'Updated pickup info');
@@ -3946,8 +3987,23 @@ const PickupForm = () => {
                  {companies.filter(c => c.isTransporter).map(c => <option key={c.id} value={c.name} />)}
                </datalist>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Port of Loading (POL)</label>
+              <input list="portListPickup" name="pol" value={formData.pol} onChange={handleFormChange} className="w-full mt-1 p-2 border border-slate-300 rounded-md" placeholder="Enter or search POL..." />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Port of Discharge (POD)</label>
+              <input list="portListPickup" name="pod" value={formData.pod} onChange={handleFormChange} className="w-full mt-1 p-2 border border-slate-300 rounded-md" placeholder="Enter or search POD..." />
+            </div>
           </div>
         </div>
+
+        <datalist id="portListPickup">
+          {(ports || []).map(p => {
+            const display = p.portName ? `${p.name} - ${p.portName} ${p.country ? `(${p.country})` : ''}` : p.name;
+            return <option key={p.id} value={p.name}>{display}</option>;
+          })}
+        </datalist>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
           <h3 className="text-lg font-semibold text-slate-800 border-b pb-2">Status & Linkage</h3>
@@ -4145,9 +4201,192 @@ const PickupForm = () => {
             </button>
           )}
         </div>
-        <button onClick={savePickup} className="flex items-center space-x-2 bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-indigo-700 transition shadow-md hover:shadow-lg">
-          <Save className="w-5 h-5"/> <span>{editPickupId ? 'Update Pickup Request' : 'Save Pickup Request'}</span>
-        </button>
+        <div className="flex space-x-3">
+          <button onClick={() => savePickup(true)} className="flex items-center space-x-2 border border-indigo-600 text-indigo-600 px-6 py-3 rounded-xl font-bold text-lg hover:bg-slate-50 transition shadow-sm bg-white">
+            <Save className="w-5 h-5"/> <span>Save as Draft</span>
+          </button>
+          <button onClick={() => savePickup(false)} className="flex items-center space-x-2 bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-indigo-700 transition shadow-md hover:shadow-lg">
+            <Save className="w-5 h-5"/> <span>{editPickupId ? 'Update Pickup Request' : 'Save Pickup Request'}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PickupOverview = () => {
+  const { pickups, companies, openRecordInNewWindow } = React.useContext(AppContext);
+  const [groupBy, setGroupBy] = useState('route');
+
+  const pendingPickups = React.useMemo(() => {
+    const active = pickups.filter(p => p.status !== 'PICKED_UP' && p.status !== 'Linked' && !p.pickupPartyId && !p.pickupPartyName);
+    const groups: any = {};
+    const msStates = ['Johor', 'Kedah', 'Kelantan', 'Kuala Lumpur', 'Labuan', 'Melaka', 'Negeri Sembilan', 'Pahang', 'Penang', 'Perak', 'Perlis', 'Putrajaya', 'Sabah', 'Sarawak', 'Selangor', 'Terengganu'];
+    
+    active.forEach(p => {
+      let pCity = 'Unknown Origin';
+      let pState = 'Unknown State';
+      const consignor = companies.find(c => c.id === p.consignorId || c.name === p.consignorName);
+      if (consignor && consignor.pickupAddresses) {
+        const pd = consignor.pickupAddresses.find(da => da.city && p.pickupAddress && p.pickupAddress.includes(da.city));
+        if (pd && pd.city) pCity = pd.city;
+        if (pd && pd.state) pState = pd.state;
+      }
+      if (pCity === 'Unknown Origin' && p.pickupAddress) {
+        const match = p.pickupAddress.match(/\b\d{5}\b\s+([A-Za-z\s]+)(?:,|\n|$)/);
+        if (match && match[1]) {
+           pCity = match[1].trim();
+        }
+      }
+      if (pState === 'Unknown State' && p.pickupAddress) {
+        const addrLower = p.pickupAddress.toLowerCase();
+        const found = msStates.find(s => addrLower.includes(s.toLowerCase()));
+        if (found) pState = found;
+      }
+
+      let dCity = 'Unknown Dest';
+      const dropOffCo = companies.find(c => c.id === p.dropOffCompanyId || c.name === p.dropOffCompanyName);
+      if (dropOffCo && dropOffCo.warehouseAddresses) {
+         const wa = dropOffCo.warehouseAddresses.find(da => da.city && p.dropOffAddress && p.dropOffAddress.includes(da.city));
+         if (wa && wa.city) dCity = wa.city;
+         else if (dropOffCo.warehouseAddresses.length > 0 && dropOffCo.warehouseAddresses[0].city) {
+            dCity = dropOffCo.warehouseAddresses[0].city;
+         }
+      }
+      if (dCity === 'Unknown Dest' && p.dropOffAddress) {
+        const match = p.dropOffAddress.match(/\b\d{5}\b\s+([A-Za-z\s]+)(?:,|\n|$)/);
+        if (match && match[1]) {
+           dCity = match[1].trim();
+        }
+      }
+
+      const whName = p.dropOffCompanyName || p.consigneeName || 'Unknown Warehouse';
+      const daysPending = Math.floor((new Date().getTime() - new Date(p.date).getTime()) / (1000 * 3600 * 24));
+      
+      const originStr = pCity.trim().toUpperCase();
+      const destStr = `${whName.trim().toUpperCase()} (${dCity.trim().toUpperCase()})`;
+      const stateStr = pState.trim().toUpperCase();
+
+      const itemWithDetails = { ...p, daysPending: Math.max(0, daysPending), originStr, destStr, stateStr };
+
+      if (groupBy === 'origin') {
+         if (!groups[stateStr]) groups[stateStr] = {};
+         if (!groups[stateStr][originStr]) groups[stateStr][originStr] = [];
+         groups[stateStr][originStr].push(itemWithDetails);
+      } else if (groupBy === 'dropoff') {
+         const key = `Drop-off: ${destStr}`;
+         if (!groups[key]) groups[key] = [];
+         groups[key].push(itemWithDetails);
+      } else if (groupBy === 'age') {
+         const key = `Pending: ${daysPending} Days`;
+         if (!groups[key]) groups[key] = [];
+         groups[key].push(itemWithDetails);
+      } else {
+         const key = `${originStr} TO ${destStr}`;
+         if (!groups[key]) groups[key] = [];
+         groups[key].push(itemWithDetails);
+      }
+    });
+    
+    // Sort logic
+    if (groupBy === 'age') {
+       return Object.fromEntries(
+         Object.entries(groups).sort(([a], [b]) => {
+           const numA = parseInt(a.replace(/\D/g, '')) || 0;
+           const numB = parseInt(b.replace(/\D/g, '')) || 0;
+           return numB - numA; // Descending age
+         })
+       );
+    } else if (groupBy === 'origin') {
+       const sortedGroups: any = Object.fromEntries(Object.entries(groups).sort());
+       for (const state in sortedGroups) {
+           sortedGroups[state] = Object.fromEntries(Object.entries(sortedGroups[state]).sort());
+       }
+       return sortedGroups;
+    }
+    
+    return Object.fromEntries(Object.entries(groups).sort());
+  }, [pickups, companies, groupBy]);
+
+  const renderItem = (p: any, mode: string) => {
+    let extraInfo = null;
+    if (mode === 'dropoff') {
+      extraInfo = `From: ${p.originStr}`;
+    } else if (mode === 'origin') {
+      extraInfo = `To: ${p.destStr}`;
+    } else if (mode === 'age') {
+      extraInfo = `${p.originStr} → ${p.destStr}`;
+    }
+
+    return (
+      <button 
+        key={p.id} 
+        onClick={() => openRecordInNewWindow('new-pickup', p.id)}
+        className={`flex flex-col items-start px-3 py-2 border rounded-md transition shadow-sm w-full sm:w-auto sm:min-w-[220px] ${p.status === 'DRAFT' ? 'bg-slate-50 border-slate-200 hover:bg-slate-100' : p.daysPending >= 3 ? 'bg-red-50 border-red-200 hover:bg-red-100' : p.daysPending >= 1 ? 'bg-orange-50 border-orange-200 hover:bg-orange-100' : 'bg-green-50 border-green-200 hover:bg-green-100'}`}
+        title={`${p.customerName} - ${p.status === 'DRAFT' ? 'Draft' : `Pending for ${p.daysPending} days`}`}
+      >
+        <div className={`flex items-center justify-between w-full gap-4 mb-2 pb-1.5 border-b ${p.status === 'DRAFT' ? 'border-slate-200/70' : p.daysPending >= 3 ? 'border-red-200/50' : p.daysPending >= 1 ? 'border-orange-200/50' : 'border-green-200/50'}`}>
+          <span className={`font-bold font-mono text-sm ${p.status === 'DRAFT' ? 'text-slate-700' : p.daysPending >= 3 ? 'text-red-800' : p.daysPending >= 1 ? 'text-orange-800' : 'text-green-800'}`}>{p.id}</span>
+          <span className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded shadow-sm ${p.status === 'DRAFT' ? 'bg-slate-400 text-white' : p.daysPending >= 3 ? 'bg-red-500 text-white' : p.daysPending >= 1 ? 'bg-orange-500 text-white' : 'bg-green-500 text-white'}`}>{p.status === 'DRAFT' ? 'DRAFT' : p.daysPending + 'd'}</span>
+        </div>
+        {extraInfo && <div className={`text-[10px] sm:text-[11px] font-bold mb-1.5 uppercase tracking-wide truncate max-w-[280px] text-left leading-tight ${p.status === 'DRAFT' ? 'text-slate-600' : p.daysPending >= 3 ? 'text-red-700' : p.daysPending >= 1 ? 'text-orange-700' : 'text-green-700'}`}>{extraInfo}</div>}
+        
+        <div className={`w-full text-xs space-y-1 text-left ${p.status === 'DRAFT' ? 'text-slate-600' : p.daysPending >= 3 ? 'text-red-900/80' : p.daysPending >= 1 ? 'text-orange-900/80' : 'text-green-900/80'}`}>
+           {p.customerName && <div className="flex gap-1.5 items-start"><span className="opacity-70 font-medium min-w-[24px]">Cust:</span> <span className="font-semibold line-clamp-1 truncate">{p.customerName}</span></div>}
+           {p.consignorName && <div className="flex gap-1.5 items-start"><span className="opacity-70 font-medium min-w-[24px]">Pick:</span> <span className="font-semibold line-clamp-1 truncate">{p.consignorName}</span></div>}
+           {p.consigneeName && <div className="flex gap-1.5 items-start"><span className="opacity-70 font-medium min-w-[24px]">Drop:</span> <span className="font-semibold line-clamp-1 truncate">{p.consigneeName}</span></div>}
+        </div>
+      </button>
+    );
+  };
+
+  const hasData = Object.keys(pendingPickups).length > 0;
+  if (!hasData) return null;
+
+  return (
+    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 border-b pb-4">
+        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+          <MapPin className="w-5 h-5 text-orange-500" /> Pickup Overview (Pending Action)
+        </h3>
+        <div className="flex flex-wrap sm:flex-nowrap gap-1 bg-slate-100 p-1.5 rounded-lg border border-slate-200/60 shadow-inner w-full sm:w-auto">
+          <button onClick={() => setGroupBy('route')} className={`flex-1 px-2 sm:px-4 py-2 text-center text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-md transition-all ${groupBy === 'route' ? 'bg-white shadow-sm text-indigo-600 ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>Route</button>
+          <button onClick={() => setGroupBy('origin')} className={`flex-1 px-2 sm:px-4 py-2 text-center text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-md transition-all ${groupBy === 'origin' ? 'bg-white shadow-sm text-indigo-600 ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>Origin City</button>
+          <button onClick={() => setGroupBy('dropoff')} className={`flex-1 px-2 sm:px-4 py-2 text-center text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-md transition-all ${groupBy === 'dropoff' ? 'bg-white shadow-sm text-indigo-600 ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>Drop-off</button>
+          <button onClick={() => setGroupBy('age')} className={`flex-1 px-2 sm:px-4 py-2 text-center text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-md transition-all ${groupBy === 'age' ? 'bg-white shadow-sm text-indigo-600 ring-1 ring-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>Urgency</button>
+        </div>
+      </div>
+      <div className="space-y-4">
+        {groupBy === 'origin' ? (
+          Object.entries(pendingPickups).map(([state, cities]: any) => (
+             <div key={state} className="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                <div className="bg-slate-100 p-3 border-b border-slate-200 font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-slate-400"></div> {state}
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {Object.entries(cities).map(([city, items]: any) => (
+                    <div key={city} className="flex flex-col md:flex-row items-start p-4 gap-6 bg-white hover:bg-slate-50/50 transition-colors">
+                      <div className="w-32 md:w-48 font-semibold text-sm text-slate-700 shrink-0 uppercase tracking-wide border-l-2 pl-3 border-indigo-200">{city}</div>
+                      <div className="flex-1 flex flex-wrap gap-2.5">
+                        {items.map((p: any) => renderItem(p, groupBy))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+             </div>
+          ))
+        ) : (
+          Object.entries(pendingPickups).map(([groupKey, items]: any) => (
+            <div key={groupKey} className="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+              <div className="bg-slate-100 p-3 border-b border-slate-200 font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-slate-400"></div> {groupKey}
+              </div>
+              <div className="p-4 bg-white flex flex-wrap gap-2.5">
+                {items.map((p: any) => renderItem(p, groupBy))}
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -4235,6 +4474,8 @@ const PickupList = () => {
           )}
         </div>
       </div>
+
+      <PickupOverview />
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
@@ -4353,7 +4594,7 @@ const ReceiptForm = () => {
   const [formData, setFormData] = useState({
     transactionType: 'LCL Consolidate', company: '', transportArrangement: 'Truck Arrangement by OmniMesh',
     customer: '', consignee: '', consignor: '', pol: '', pod: '', consigneeDeliveryAddress: '', consigneeDeliveryLocationId: '', pickupLocationId: '', shipperDoNo: '', isUrgent: false,
-    sendingType: 'SEND IN', puNo: '', grnRemarks: '', shipperDoAttachment: '', otherAttachments: [], conditionStatus: 'Good'
+    sendingType: 'SEND IN', puNo: '', grnRemarks: '', shipperDoAttachment: '', otherAttachments: [], conditionStatus: 'Good', status: 'NEW'
   });
 
   const [lines, setLines] = useState([{ id: Date.now().toString(), product: '', uom: 'Pallet', qty: 1, l: '', w: '', h: '', weight: '', cbm: 0 }]);
@@ -4382,7 +4623,8 @@ const ReceiptForm = () => {
           conditionStatus: r.conditionStatus || 'Good',
           shipperDoAttachment: r.shipperDoAttachment || '',
           otherAttachments: r.otherAttachments || [],
-          puNo: r.puNo || ''
+          puNo: r.puNo || '',
+          status: r.status || 'NEW'
         });
         setLines(r.lines && r.lines.length > 0 ? r.lines : [{ id: Date.now().toString(), product: '', uom: 'Pallet', qty: 1, l: '', w: '', h: '', weight: '', cbm: 0 }]);
       }
@@ -4394,6 +4636,8 @@ const ReceiptForm = () => {
         customer: p.customerName || prev.customer, 
         consignee: p.consigneeName || prev.consignee, 
         consignor: p.consignorName || prev.consignor, 
+        pol: p.pol || prev.pol,
+        pod: p.pod || prev.pod,
         consigneeDeliveryAddress: p.dropOffAddress || prev.consigneeDeliveryAddress, 
         consigneeDeliveryLocationId: p.dropOffLocationId || prev.consigneeDeliveryLocationId,
         pickupLocationId: p.pickupLocationId || prev.pickupLocationId,
@@ -4412,7 +4656,7 @@ const ReceiptForm = () => {
       setFormData({
         transactionType: 'LCL Consolidate', company: '', transportArrangement: 'Truck Arrangement by OmniMesh',
         customer: '', consignee: '', consignor: '', pol: '', pod: '', consigneeDeliveryAddress: '', consigneeDeliveryLocationId: '', pickupLocationId: '', shipperDoNo: '', isUrgent: false,
-        sendingType: 'SEND IN', puNo: '', grnRemarks: '', shipperDoAttachment: '', otherAttachments: [], conditionStatus: 'Good'
+        sendingType: 'SEND IN', puNo: '', grnRemarks: '', shipperDoAttachment: '', otherAttachments: [], conditionStatus: 'Good', status: 'NEW'
       });
       setLines([{ id: Date.now().toString(), product: '', uom: 'Pallet', qty: 1, l: '', w: '', h: '', weight: '', cbm: 0 }]);
     }
@@ -4481,7 +4725,19 @@ const ReceiptForm = () => {
     if (e.target.tagName !== 'SELECT' && typeof value === 'string' && !['isUrgent', 'conditionStatus'].includes(e.target.name) && e.target.type !== 'radio') {
       value = value.toUpperCase();
     }
-    setFormData(prev => ({ ...prev, [e.target.name]: value }));
+    setFormData(prev => {
+       const updates = { [e.target.name]: value };
+       if (e.target.name === 'conditionStatus') {
+         if (value === 'Good') {
+           updates.grnRemarks = 'RECEIVED IN GOOD CONDITION';
+         } else if (value === 'Partial Defect/Damage') {
+           updates.grnRemarks = 'RECEIVED DEFECT/DAMAGE (PARTIAL)';
+         } else if (value === 'Full Defect/Damage') {
+           updates.grnRemarks = 'RECEIVED DEFECT/DAMAGE (FULL)';
+         }
+       }
+       return { ...prev, ...updates };
+    });
   };
 
   const updateLine = (id, field, value) => {
@@ -4499,17 +4755,19 @@ const ReceiptForm = () => {
     }));
   };
 
-  const saveReceipt = () => {
-    if (!formData.company) return showMessage("Please select a Company (OmniMesh).");
-    if (!formData.customer || !formData.consignee || !formData.consignor || !formData.shipperDoNo) return showMessage("Please fill in Customer, Consignee, Consignor, and Shipper DO No.");
-    if (!formData.consigneeDeliveryAddress) return showMessage("Consignee Delivery Address is strictly required.");
-    if (formData.transactionType === 'LCL Consolidate' && (!formData.pol || !formData.pod)) return showMessage("POL and POD are required for LCL Consolidate.");
+  const saveReceipt = (isDraft = false) => {
+    if (!isDraft) {
+      if (!formData.company) return showMessage("Please select a Company (OmniMesh).");
+      if (!formData.customer || !formData.consignee || !formData.consignor || !formData.shipperDoNo) return showMessage("Please fill in Customer, Consignee, Consignor, and Shipper DO No.");
+      if (!formData.consigneeDeliveryAddress) return showMessage("Consignee Delivery Address is strictly required.");
+      if (formData.transactionType === 'LCL Consolidate' && (!formData.pol || !formData.pod)) return showMessage("POL and POD are required for LCL Consolidate.");
 
-    const invalidLine = lines.find(l => !l.product.trim() || !l.weight || l.l === '' || l.w === '' || l.h === '');
-    if (invalidLine) return showMessage("All line items must have a Product Description, Weight, and Dimensions (L, W, H).");
+      const invalidLine = lines.find(l => !l.product.trim() || !l.weight || l.l === '' || l.w === '' || l.h === '');
+      if (invalidLine) return showMessage("All line items must have a Product Description, Weight, and Dimensions (L, W, H).");
 
-    const isDuplicateDo = (receipts || []).some(r => r.id !== editReceiptId && r.shipperDoNo === formData.shipperDoNo && r.consignor === formData.consignor);
-    if (isDuplicateDo) return showMessage(`Shipper DO Number '${formData.shipperDoNo}' already exists for Consignor '${formData.consignor}'. Duplicate DO numbers for the same consignor are not allowed.`);
+      const isDuplicateDo = (receipts || []).some(r => r.id !== editReceiptId && r.shipperDoNo === formData.shipperDoNo && r.consignor === formData.consignor);
+      if (isDuplicateDo) return showMessage(`Shipper DO Number '${formData.shipperDoNo}' already exists for Consignor '${formData.consignor}'. Duplicate DO numbers for the same consignor are not allowed.`);
+    }
 
     const d = editReceiptId ? new Date((receipts || []).find(x => x.id === editReceiptId).date) : new Date();
 
@@ -4532,6 +4790,7 @@ const ReceiptForm = () => {
       id: newId,
       date: d.toISOString(),
       ...formData,
+      status: isDraft ? 'DRAFT' : (formData.status === 'DRAFT' ? 'NEW' : (formData.status || 'NEW')),
       lines,
       totalQty: lines.reduce((sum, l) => sum + (parseInt(l.qty) || 0), 0),
       totalCBM: lines.reduce((sum, l) => sum + l.cbm, 0),
@@ -4567,7 +4826,10 @@ const ReceiptForm = () => {
         updateDoc(doc(db, 'pickups', p.id), { 
           linkedSid: newId, 
           status: 'Linked', 
-          lines: lines.map(l => ({...l})) 
+          lines: lines.map(l => ({...l})),
+          totalQty: updatedReceipt.totalQty,
+          totalCBM: updatedReceipt.totalCBM,
+          totalWeight: updatedReceipt.totalWeight
         }).catch(err => handleFirestoreError(err, OperationType.UPDATE, `pickups/${p.id}`));
       }
     }
@@ -4730,11 +4992,6 @@ const ReceiptForm = () => {
           </div>
 
           <div className="md:col-span-2 lg:col-span-3">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Goods Received Note Remarks</label>
-            <textarea name="grnRemarks" value={formData.grnRemarks} onChange={handleFormChange} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Received in good condition" rows={2} />
-          </div>
-
-          <div className="md:col-span-2 lg:col-span-3">
             <label className="block text-sm font-medium text-slate-700 mb-1">Consignee Delivery Address <span className="text-red-500">*</span></label>
             {formData.consignee && (companies || []).find(c => c.name === formData.consignee)?.deliveryAddresses?.length > 0 && (
               <div className="mb-2">
@@ -4758,21 +5015,28 @@ const ReceiptForm = () => {
           </div>
 
           <div className="md:col-span-2 lg:col-span-3 pt-4 mt-2 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Shipment Condition</label>
-              <div className="space-y-2">
-                <label className="flex items-center space-x-2">
-                  <input type="radio" name="conditionStatus" value="Good" checked={formData.conditionStatus === 'Good'} onChange={handleFormChange} className="text-blue-600 focus:ring-blue-500" />
-                  <span className="text-sm text-slate-700">Received in Good Condition</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input type="radio" name="conditionStatus" value="Partial Defect/Damage" checked={formData.conditionStatus === 'Partial Defect/Damage'} onChange={handleFormChange} className="text-blue-600 focus:ring-blue-500" />
-                  <span className="text-sm text-slate-700">Defect/Damage (Partial)</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input type="radio" name="conditionStatus" value="Full Defect/Damage" checked={formData.conditionStatus === 'Full Defect/Damage'} onChange={handleFormChange} className="text-blue-600 focus:ring-blue-500" />
-                  <span className="text-sm text-slate-700">Defect/Damage (Full)</span>
-                </label>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Shipment Condition</label>
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-2">
+                    <input type="radio" name="conditionStatus" value="Good" checked={formData.conditionStatus === 'Good'} onChange={handleFormChange} className="text-blue-600 focus:ring-blue-500" />
+                    <span className="text-sm text-slate-700">Received in Good Condition</span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input type="radio" name="conditionStatus" value="Partial Defect/Damage" checked={formData.conditionStatus === 'Partial Defect/Damage'} onChange={handleFormChange} className="text-blue-600 focus:ring-blue-500" />
+                    <span className="text-sm text-slate-700">Defect/Damage (Partial)</span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input type="radio" name="conditionStatus" value="Full Defect/Damage" checked={formData.conditionStatus === 'Full Defect/Damage'} onChange={handleFormChange} className="text-blue-600 focus:ring-blue-500" />
+                    <span className="text-sm text-slate-700">Defect/Damage (Full)</span>
+                  </label>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Goods Received Note Remarks</label>
+                <textarea name="grnRemarks" value={formData.grnRemarks} onChange={handleFormChange} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Received in good condition" rows={2} />
               </div>
             </div>
 
@@ -4885,7 +5149,10 @@ const ReceiptForm = () => {
             </div>
           )}
         </div>
-        <button onClick={saveReceipt} className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium shadow-sm hover:bg-blue-700 transition-colors"><Save className="w-5 h-5" /><span>{editReceiptId ? 'Update Shipment' : 'Save Shipment & Print'}</span></button>
+        <div className="flex space-x-3">
+          <button onClick={() => saveReceipt(true)} className="flex items-center space-x-2 border border-blue-600 text-blue-600 px-6 py-2.5 rounded-lg font-medium shadow-sm hover:bg-blue-50 transition-colors bg-white"><Save className="w-5 h-5" /><span>Save as Draft</span></button>
+          <button onClick={() => saveReceipt(false)} className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium shadow-sm hover:bg-blue-700 transition-colors"><Save className="w-5 h-5" /><span>{editReceiptId ? 'Update Shipment' : 'Save Shipment & Print'}</span></button>
+        </div>
       </div>
     </div>
   );
@@ -5403,22 +5670,29 @@ const ManifestForm = () => {
      return { cost: c, selling: s, profit: diff, margin };
   };
 
-  const saveManifest = () => {
-    if (!route.pol || !route.pod) return showMessage("POL and POD are required.");
-    
+  const saveManifest = (isDraft = false) => {
     let finalLines = [];
     let totalCBM = 0;
     let totalWeight = 0;
-    
+
+    if (!isDraft) {
+      if (!route.pol || !route.pod) return showMessage("POL and POD are required.");
+      
+      if (route.type === 'LCL') {
+          finalLines = manifestItems.filter(item => parseInt(item.loadQty) > 0);
+          if (finalLines.length === 0 && !route.containerNo) return showMessage("Please enter Container No to save empty manifest, or add cargo.");
+      } else {
+          if (!route.fclCustomer) return showMessage("FCL Customer is required.");
+          if (route.totalCBM === undefined || route.totalCBM === '' || isNaN(parseFloat(route.totalCBM))) return showMessage("Total CBM is required for FCL.");
+          if (fclProducts.length === 0) return showMessage("Please add at least one product.");
+      }
+    }
+
     if (route.type === 'LCL') {
         finalLines = manifestItems.filter(item => parseInt(item.loadQty) > 0);
-        if (finalLines.length === 0 && !route.containerNo) return showMessage("Please enter Container No to save empty manifest, or add cargo.");
         totalCBM = finalLines.reduce((sum, item) => sum + (parseInt(item.loadQty) * item.unitCbm), 0);
         totalWeight = finalLines.reduce((sum, item) => sum + (parseInt(item.loadQty) * item.unitWeight), 0);
     } else {
-        if (!route.fclCustomer) return showMessage("FCL Customer is required.");
-        if (route.totalCBM === undefined || route.totalCBM === '' || isNaN(parseFloat(route.totalCBM))) return showMessage("Total CBM is required for FCL.");
-        if (fclProducts.length === 0) return showMessage("Please add at least one product.");
         totalWeight = fclProducts.reduce((sum, item) => sum + (parseFloat(item.weight) || 0), 0);
         totalCBM = parseFloat(route.totalCBM) || 0;
     }
@@ -5429,23 +5703,25 @@ const ManifestForm = () => {
     const maxCbm = parseFloat(containerDef?.maxCbm || containerDef?.cbmCapacity || 0);
     const maxWgt = parseFloat(containerDef?.maxWeight || containerDef?.payload || 0);
 
-    if (maxCbm > 0 && totalCBM > maxCbm) isExceeded = true;
-    if (maxWgt > 0 && totalWeight > maxWgt) isExceeded = true;
+    if (!isDraft) {
+      if (maxCbm > 0 && totalCBM > maxCbm) isExceeded = true;
+      if (maxWgt > 0 && totalWeight > maxWgt) isExceeded = true;
+    }
 
     if (isExceeded) {
-       setPendingManifestData({ finalLines, totalCBM, totalWeight });
+       setPendingManifestData({ finalLines, totalCBM, totalWeight, isDraft });
        setShowCapacityWarning(true);
     } else {
-       executeSaveManifest({ finalLines, totalCBM, totalWeight });
+       executeSaveManifest({ finalLines, totalCBM, totalWeight, isDraft });
     }
   };
 
-  const executeSaveManifest = ({ finalLines, totalCBM, totalWeight }: any) => {
+  const executeSaveManifest = ({ finalLines, totalCBM, totalWeight, isDraft }: any) => {
     setShowCapacityWarning(false);
     setPendingManifestData(null);
     let finalManifest;
     if (editManifestId) {
-      finalManifest = { id: editManifestId, date: manifests.find(m => m.id === editManifestId)?.date || new Date().toISOString(), ...route, lines: finalLines, fclProducts, fclBilling, totalCBM, totalWeight };
+      finalManifest = { id: editManifestId, date: manifests.find(m => m.id === editManifestId)?.date || new Date().toISOString(), ...route, status: isDraft ? 'DRAFT' : (route.status === 'DRAFT' ? 'OPEN' : (route.status || 'OPEN')), lines: finalLines, fclProducts, fclBilling, totalCBM, totalWeight };
       setDoc(doc(db, 'manifests', editManifestId), finalManifest)
         .catch(err => handleFirestoreError(err, OperationType.WRITE, `manifests/${editManifestId}`));
       
@@ -5468,7 +5744,7 @@ const ManifestForm = () => {
         manifestCountersMap: { ...manifestCountersMap, [key]: (manifestCountersMap[key] || 0) + 1 }
       }, { merge: true });
 
-      finalManifest = { id: newId, date: d.toISOString(), ...route, lines: finalLines, fclProducts, fclBilling, totalCBM, totalWeight };
+      finalManifest = { id: newId, date: d.toISOString(), ...route, status: isDraft ? 'DRAFT' : (route.status === 'DRAFT' ? 'OPEN' : (route.status || 'OPEN')), lines: finalLines, fclProducts, fclBilling, totalCBM, totalWeight };
       setDoc(doc(db, 'manifests', newId), finalManifest)
         .catch(err => handleFirestoreError(err, OperationType.WRITE, `manifests/${newId}`));
 
@@ -5827,9 +6103,14 @@ const ManifestForm = () => {
                     </div>
                   )}
                 </div>
-                <button onClick={saveManifest} className="flex items-center space-x-2 bg-teal-600 text-white px-6 py-2.5 rounded-lg font-medium shadow-sm hover:bg-teal-700">
-                  <Save className="w-5 h-5" /><span>{editManifestId ? 'Update Container Manifest' : 'Save Container Manifest'}</span>
-                </button>
+                <div className="flex space-x-3">
+                  <button onClick={() => saveManifest(true)} className="flex items-center space-x-2 border border-teal-600 text-teal-600 bg-white px-6 py-2.5 rounded-lg font-medium shadow-sm hover:bg-teal-50">
+                    <Save className="w-5 h-5" /><span>Save as Draft</span>
+                  </button>
+                  <button onClick={() => saveManifest(false)} className="flex items-center space-x-2 bg-teal-600 text-white px-6 py-2.5 rounded-lg font-medium shadow-sm hover:bg-teal-700">
+                    <Save className="w-5 h-5" /><span>{editManifestId ? 'Update Container Manifest' : 'Save Container Manifest'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -5959,9 +6240,14 @@ const ManifestForm = () => {
                     </div>
                   )}
                 </div>
-                <button onClick={saveManifest} className="flex items-center space-x-2 bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium shadow-sm hover:bg-indigo-700">
-                  <Save className="w-5 h-5" /><span>{editManifestId ? 'Update FCL Container' : 'Save FCL Container'}</span>
-                </button>
+                <div className="flex space-x-3">
+                  <button onClick={() => saveManifest(true)} className="flex items-center space-x-2 border border-indigo-600 text-indigo-600 bg-white px-6 py-3 rounded-lg font-medium shadow-sm hover:bg-indigo-50">
+                    <Save className="w-5 h-5" /><span>Save as Draft</span>
+                  </button>
+                  <button onClick={() => saveManifest(false)} className="flex items-center space-x-2 bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium shadow-sm hover:bg-indigo-700">
+                    <Save className="w-5 h-5" /><span>{editManifestId ? 'Update FCL Container' : 'Save FCL Container'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -6290,13 +6576,14 @@ const ManifestList = () => {
 const HaulierBookingForm = () => {
   const {
     checkAccess, editHaulierBookingId, haulierBookings, setHaulierBookings, setEditHaulierBookingId,
-    setActiveTab, showMessage, companies, generateHaulierBookingNo, setHaulierCounter, haulierCounter, containerBookings, manifests, logActivity
+    setActiveTab, showMessage, companies, generateHaulierBookingNo, setHaulierCounter, haulierCounter, containerBookings, manifests, logActivity,
+    ports, depots
   } = React.useContext(AppContext);
 
   const [formData, setFormData] = useState({
-    cbn: '', containerNo: '', blNo: '', bookingNo: '', haulierId: '', segment: 'POL',
-    emptyLeg: { slotDate: '', slotTime: '', status: 'PENDING' },
-    ladenLeg: { slotDate: '', slotTime: '', status: 'PENDING' }
+    cbn: '', containerNo: '', blNo: '', bookingNo: '', haulierId: '', segment: 'POL', portId: '',
+    emptyLeg: { location: '', slotDate: '', slotTime: '', status: 'PENDING', depotId: '' },
+    ladenLeg: { location: '', slotDate: '', slotTime: '', status: 'PENDING', depotId: '' }
   });
 
   const [selectingCbn, setSelectingCbn] = useState(false);
@@ -6307,16 +6594,16 @@ const HaulierBookingForm = () => {
       if (h) {
         setFormData({
           ...h,
-          emptyLeg: h.emptyLeg || { slotDate: '', slotTime: '', status: 'PENDING' },
-          ladenLeg: h.ladenLeg || { slotDate: '', slotTime: '', status: 'PENDING' }
+          emptyLeg: { location: '', slotDate: '', slotTime: '', status: 'PENDING', depotId: '', ...(h.emptyLeg || {}) },
+          ladenLeg: { location: '', slotDate: '', slotTime: '', status: 'PENDING', depotId: '', ...(h.ladenLeg || {}) }
         });
       }
       setSelectingCbn(false);
     } else {
       setFormData({
-        cbn: '', containerId: '', containerNo: '', blNo: '', bookingNo: '', jobNo: '', haulierId: '', segment: 'POL',
-        emptyLeg: { slotDate: '', slotTime: '', status: 'PENDING' },
-        ladenLeg: { slotDate: '', slotTime: '', status: 'PENDING' }
+        cbn: '', containerId: '', containerNo: '', blNo: '', bookingNo: '', jobNo: '', haulierId: '', segment: 'POL', portId: '',
+        emptyLeg: { location: '', slotDate: '', slotTime: '', status: 'PENDING', depotId: '' },
+        ladenLeg: { location: '', slotDate: '', slotTime: '', status: 'PENDING', depotId: '' }
       });
       setSelectingCbn(true);
     }
@@ -6359,8 +6646,10 @@ const HaulierBookingForm = () => {
     setSelectingCbn(false);
   };
 
-  const save = () => {
-    if (!formData.haulierId) return showMessage("Haulier Company is required.");
+  const save = (isDraft = false) => {
+    if (!isDraft) {
+      if (!formData.haulierId) return showMessage("Haulier Company is required.");
+    }
     let id = editHaulierBookingId;
     let incrementCounter = 0;
     
@@ -6373,7 +6662,7 @@ const HaulierBookingForm = () => {
       id = generateHaulierBookingNo(sailingDate, portCode);
       incrementCounter++;
     }
-    const payload = { ...formData, id };
+    const payload = { ...formData, id, status: isDraft ? 'DRAFT' : (formData.status === 'DRAFT' ? 'OPEN' : (formData.status || 'OPEN')) };
     
     setDoc(doc(db, 'haulierBookings', payload.id), payload)
       .catch(err => handleFirestoreError(err, OperationType.WRITE, `haulierBookings/${payload.id}`));
@@ -6501,6 +6790,13 @@ const HaulierBookingForm = () => {
             <option value="POD">POD (Import)</option>
           </select>
         </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Assigned Port</label>
+          <select name="portId" value={formData.portId || ''} onChange={handleChange} className="w-full p-2 border border-slate-300 rounded-md">
+            <option value="">-- Select Port --</option>
+            {(ports || []).map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+          </select>
+        </div>
         <div><label className="block text-sm font-medium text-slate-700 mb-1">Liner Booking No.</label><input type="text" name="bookingNo" value={formData.bookingNo} onChange={(e) => setFormData({...formData, bookingNo: e.target.value.toUpperCase()})} className="w-full p-2 border border-slate-300 rounded-md" /></div>
         <div><label className="block text-sm font-medium text-slate-700 mb-1">Master BL No.</label><input type="text" name="blNo" value={formData.blNo} onChange={(e) => setFormData({...formData, blNo: e.target.value.toUpperCase()})} className="w-full p-2 border border-slate-300 rounded-md font-mono" /></div>
         <div>
@@ -6522,7 +6818,17 @@ const HaulierBookingForm = () => {
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
          <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Leg 1: {formData.segment === 'POL' ? 'Empty Container (Depot to Warehouse)' : 'Laden Container (Port/Depot to Warehouse)'}</h3>
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">Location To</label><input type="text" value={formData.emptyLeg.location || ''} onChange={(e) => { handleLegChange('emptyLeg', 'location', e.target.value); if (!formData.ladenLeg.location) handleLegChange('ladenLeg', 'location', e.target.value); }} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Warehouse A" /></div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1">{formData.segment === 'POL' ? 'Depot From' : 'Location To / From'}</label>
+              {formData.segment === 'POL' ? (
+                <select value={formData.emptyLeg.depotId || ''} onChange={(e) => handleLegChange('emptyLeg', 'depotId', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md">
+                   <option value="">-- Select Depot --</option>
+                   {(depots || []).filter(d => d.portId === formData.portId).map(d => <option key={d.id} value={d.id}>{d.name} {d.address ? `(${d.address})` : ''}</option>)}
+                </select>
+              ) : (
+                <input type="text" value={formData.emptyLeg.location || ''} onChange={(e) => { handleLegChange('emptyLeg', 'location', e.target.value); if (!formData.ladenLeg.location) handleLegChange('ladenLeg', 'location', e.target.value); }} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Warehouse A" />
+              )}
+            </div>
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Slot Date</label><input type="date" max={formData.ladenLeg.slotDate || undefined} value={formData.emptyLeg.slotDate} onChange={(e) => handleLegChange('emptyLeg', 'slotDate', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Slot Time</label><input type="time" value={formData.emptyLeg.slotTime} onChange={(e) => handleLegChange('emptyLeg', 'slotTime', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
             <div>
@@ -6561,7 +6867,17 @@ const HaulierBookingForm = () => {
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
          <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Leg 2: {formData.segment === 'POL' ? 'Laden Container (Warehouse to Port)' : 'Empty Container (Warehouse to Depot)'}</h3>
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="md:col-span-2"><label className="block text-sm font-medium text-slate-700 mb-1">Location To</label><input type="text" value={formData.ladenLeg.location || ''} onChange={(e) => handleLegChange('ladenLeg', 'location', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Port Terminal" /></div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1">{formData.segment === 'POD' ? 'Depot To' : 'Location To / From'}</label>
+              {formData.segment === 'POD' ? (
+                <select value={formData.ladenLeg.depotId || ''} onChange={(e) => handleLegChange('ladenLeg', 'depotId', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md">
+                   <option value="">-- Select Depot --</option>
+                   {(depots || []).filter(d => d.portId === formData.portId).map(d => <option key={d.id} value={d.id}>{d.name} {d.address ? `(${d.address})` : ''}</option>)}
+                </select>
+              ) : (
+                <input type="text" value={formData.ladenLeg.location || ''} onChange={(e) => handleLegChange('ladenLeg', 'location', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" placeholder="e.g. Port Terminal" />
+              )}
+            </div>
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Slot Date</label><input type="date" min={formData.emptyLeg.slotDate || undefined} value={formData.ladenLeg.slotDate} onChange={(e) => handleLegChange('ladenLeg', 'slotDate', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
             <div><label className="block text-sm font-medium text-slate-700 mb-1">Slot Time</label><input type="time" value={formData.ladenLeg.slotTime} onChange={(e) => handleLegChange('ladenLeg', 'slotTime', e.target.value)} className="w-full p-2 border border-slate-300 rounded-md" /></div>
             <div>
@@ -6578,7 +6894,8 @@ const HaulierBookingForm = () => {
       {editHaulierBookingId && <ActivityHistory recordId={editHaulierBookingId} />}
       <div className="flex justify-end space-x-3 pt-4">
         <button onClick={() => { setEditHaulierBookingId(null); setActiveTab('haulier-booking-list'); (window.closeMobileMenu ? window.closeMobileMenu() : null); }} className="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition">Cancel</button>
-        <button onClick={save} className="px-8 py-2 bg-indigo-600 text-white rounded-lg flex items-center space-x-2 hover:bg-indigo-700 transition shadow-sm font-medium"><Save className="w-5 h-5 mr-1" /> Save Booking</button>
+        <button onClick={() => save(true)} className="px-6 py-2 border border-indigo-600 text-indigo-600 rounded-lg flex items-center space-x-2 hover:bg-slate-50 transition shadow-sm font-medium"><Save className="w-5 h-5 mr-1" /> Save as Draft</button>
+        <button onClick={() => save(false)} className="px-8 py-2 bg-indigo-600 text-white rounded-lg flex items-center space-x-2 hover:bg-indigo-700 transition shadow-sm font-medium"><Save className="w-5 h-5 mr-1" /> Save Booking</button>
       </div>
 
     </div>
@@ -6587,7 +6904,7 @@ const HaulierBookingForm = () => {
 
 const HaulierBookingList = () => {
   const { 
-    haulierBookings, setEditHaulierBookingId, setActiveTab, companies
+    haulierBookings, setEditHaulierBookingId, setActiveTab, companies, depots
   } = React.useContext(AppContext);
 
   const [showActiveOnly, setShowActiveOnly] = useState(true);
@@ -6623,7 +6940,10 @@ const HaulierBookingList = () => {
              return (
               <tr key={h.id} className="hover:bg-slate-50">
                 <td className="p-3">
-                  <p className="font-semibold text-indigo-700">{h.id}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-indigo-700">{h.id}</p>
+                    {h.status === 'DRAFT' && <span className="px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded text-[9px] uppercase tracking-wider font-bold">Draft</span>}
+                  </div>
                   <p className="font-medium text-slate-700 text-xs mt-1">{hName}</p>
                 </td>
                 <td className="p-3">
@@ -6634,11 +6954,13 @@ const HaulierBookingList = () => {
                 <td className="p-3">
                    <p className="font-medium text-slate-800">{h.emptyLeg.slotDate || 'TBD'}</p>
                    <p className="text-xs text-slate-500 mb-1">{h.emptyLeg.slotTime || '-'}</p>
+                   <p className="text-[10px] text-indigo-500 mb-1 uppercase font-semibold">{h.emptyLeg.depotId ? (depots.find(d => d.id === h.emptyLeg.depotId)?.name || 'Depot') : (h.emptyLeg.location || 'Location')}</p>
                    {renderStatus(h.emptyLeg.status)}
                 </td>
                 <td className="p-3">
                    <p className="font-medium text-slate-800">{h.ladenLeg.slotDate || 'TBD'}</p>
                    <p className="text-xs text-slate-500 mb-1">{h.ladenLeg.slotTime || '-'}</p>
+                   <p className="text-[10px] text-indigo-500 mb-1 uppercase font-semibold">{h.ladenLeg.depotId ? (depots.find(d => d.id === h.ladenLeg.depotId)?.name || 'Depot') : (h.ladenLeg.location || 'Location')}</p>
                    {renderStatus(h.ladenLeg.status)}
                 </td>
                 <td className="p-3 text-center">
@@ -6763,21 +7085,23 @@ const ContainerBookingForm = () => {
   const addContainer = () => setFormData({ ...formData, containers: [...formData.containers, { id: Date.now().toString() + Math.random(), containerNo: '', containerTypeId: '', usageType: 'LCL' }]});
   const removeContainer = (idx) => setFormData({ ...formData, containers: formData.containers.filter((_, i) => i !== idx) });
 
-  const save = () => {
-    if (!formData.pol || !formData.pod || !formData.linerBrokerId) return showMessage("Liner/Broker, POL, POD are required.");
-    if (formData.containers.some(c => !c.containerTypeId)) return showMessage("All containers must have a Type selected.");
-    
-    // validate closing date 
-    if (formData.containerClosingDate) {
-      const closeDate = new Date(formData.containerClosingDate).getTime();
-      if (formData.ladenHaulierDate) {
-        const ladenDate = new Date(formData.ladenHaulierDate).getTime();
-        if (closeDate < ladenDate) return showMessage("Container closing date cannot be earlier than container laden haulier date.");
-      }
-      if (formData.emptyLadenDate) {
-        const emptyDate = new Date(formData.emptyLadenDate).getTime();
-        // Normally empty laden date is before laden haulier date. So close date > empty date is expected. 
-        if (closeDate < emptyDate) return showMessage("Container closing date cannot be earlier than empty laden date.");
+  const save = (isDraft = false) => {
+    if (!isDraft) {
+      if (!formData.pol || !formData.pod || !formData.linerBrokerId) return showMessage("Liner/Broker, POL, POD are required.");
+      if (formData.containers.some(c => !c.containerTypeId)) return showMessage("All containers must have a Type selected.");
+      
+      // validate closing date 
+      if (formData.containerClosingDate) {
+        const closeDate = new Date(formData.containerClosingDate).getTime();
+        if (formData.ladenHaulierDate) {
+          const ladenDate = new Date(formData.ladenHaulierDate).getTime();
+          if (closeDate < ladenDate) return showMessage("Container closing date cannot be earlier than container laden haulier date.");
+        }
+        if (formData.emptyLadenDate) {
+          const emptyDate = new Date(formData.emptyLadenDate).getTime();
+          // Normally empty laden date is before laden haulier date. So close date > empty date is expected. 
+          if (closeDate < emptyDate) return showMessage("Container closing date cannot be earlier than empty laden date.");
+        }
       }
     }
 
@@ -6793,7 +7117,7 @@ const ContainerBookingForm = () => {
         containerCbn: c.containerCbn && editBookingId ? c.containerCbn : `${id}-${String(i+1).padStart(2, '0')}/${String(totalContainers).padStart(2, '0')}`
     }));
 
-    const payload = { ...formData, id, containers: containersWithCbn };
+    const payload = { ...formData, id, containers: containersWithCbn, status: isDraft ? 'DRAFT' : (formData.status === 'DRAFT' ? 'OPEN' : (formData.status || 'OPEN')) };
     
     setDoc(doc(db, 'containerBookings', id), payload)
       .catch(err => handleFirestoreError(err, OperationType.WRITE, `containerBookings/${id}`));
@@ -6894,7 +7218,8 @@ const ContainerBookingForm = () => {
         </div>
         <div className="flex space-x-3">
           <button onClick={() => { setEditBookingId(null); setActiveTab('booking-list'); (window.closeMobileMenu ? window.closeMobileMenu() : null); }} className="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition">Cancel</button>
-          <button onClick={save} className="px-8 py-2 bg-sky-600 text-white rounded-lg flex items-center space-x-2 hover:bg-sky-700 transition shadow-sm font-medium"><Save className="w-5 h-5 mr-1" /> Save Booking</button>
+          <button onClick={() => save(true)} className="px-6 py-2 border border-sky-600 text-sky-600 rounded-lg flex items-center space-x-2 hover:bg-sky-50 transition shadow-sm font-medium"><Save className="w-5 h-5 mr-1" /> Save as Draft</button>
+          <button onClick={() => save(false)} className="px-8 py-2 bg-sky-600 text-white rounded-lg flex items-center space-x-2 hover:bg-sky-700 transition shadow-sm font-medium"><Save className="w-5 h-5 mr-1" /> Save Booking</button>
         </div>
       </div>
     </div>
@@ -6988,12 +7313,15 @@ const ContainerBookingList = () => {
               return (
                 <tr key={b.id} className="hover:bg-slate-50 transition-colors">
                   <td className="p-4">
-                    <button 
-                      onClick={() => openRecordInNewWindow('new-booking', b.id)}
-                      className="font-semibold text-blue-600 underline hover:text-blue-800"
-                    >
-                      {b.id}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => openRecordInNewWindow('new-booking', b.id)}
+                        className="font-semibold text-blue-600 underline hover:text-blue-800"
+                      >
+                        {b.id}
+                      </button>
+                      {b.status === 'DRAFT' && <span className="px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded text-[9px] uppercase tracking-wider font-bold">Draft</span>}
+                    </div>
                     <p className="text-xs text-slate-500 mt-1">Jobs: <span className="font-medium text-slate-700">{b.containers && b.containers.length > 0 ? Array.from(new Set(b.containers.filter(c => c.jobNo).map(c => c.jobNo))).join(', ') || '-' : '-'}</span></p>
                   </td>
                   <td className="p-4">
@@ -7190,11 +7518,13 @@ const ReturnNoteForm = () => {
     }));
   };
 
-  const saveReturn = () => {
+  const saveReturn = (isDraft = false) => {
     const totalReturnQty = returnLines.reduce((sum, l) => sum + l.returnQty, 0);
-    if (totalReturnQty === 0) return showMessage("Please specify at least one item quantity to return.");
+    if (!isDraft) {
+      if (totalReturnQty === 0) return showMessage("Please specify at least one item quantity to return.");
+    }
 
-    const activeLines = returnLines.filter(l => l.returnQty > 0);
+    const activeLines = returnLines.filter(l => l.returnQty > 0 || isDraft);
     const totalReturnCBM = activeLines.reduce((sum, l) => sum + (l.returnQty * l.unitCbm), 0);
     const totalReturnWeight = activeLines.reduce((sum, l) => sum + (l.returnQty * l.unitWeight), 0);
 
@@ -7203,6 +7533,7 @@ const ReturnNoteForm = () => {
       receiptId: selectedReceiptId,
       date: editReturnId ? (returns || []).find(r => r.id === editReturnId).date : new Date().toISOString(),
       reason: returnReason,
+      status: isDraft ? 'DRAFT' : 'NEW',
       lines: activeLines,
       totalReturnQty,
       totalReturnCBM,
@@ -7336,9 +7667,14 @@ const ReturnNoteForm = () => {
                   </button>
                 )}
               </div>
-              <button onClick={saveReturn} className="flex items-center space-x-2 bg-orange-500 text-white px-6 py-2.5 rounded-lg shadow-sm hover:bg-orange-600 font-medium transition-colors">
-                <Undo2 className="w-5 h-5" /><span>{editReturnId ? 'Update Return Note' : 'Confirm Return Note'}</span>
-              </button>
+              <div className="flex space-x-3">
+                <button onClick={() => saveReturn(true)} className="flex items-center space-x-2 border border-orange-500 text-orange-500 bg-white px-6 py-2.5 rounded-lg shadow-sm hover:bg-orange-50 font-medium transition-colors">
+                  <Save className="w-5 h-5" /><span>Save as Draft</span>
+                </button>
+                <button onClick={() => saveReturn(false)} className="flex items-center space-x-2 bg-orange-500 text-white px-6 py-2.5 rounded-lg shadow-sm hover:bg-orange-600 font-medium transition-colors">
+                  <Undo2 className="w-5 h-5" /><span>{editReturnId ? 'Update Return Note' : 'Confirm Return Note'}</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -7381,12 +7717,15 @@ const ReturnList = () => {
               (returns || []).map(ret => (
                 <tr key={ret.id} className="hover:bg-slate-50">
                   <td className="p-4 text-sm font-medium text-blue-600 font-bold underline">
-                    <button 
-                      onClick={() => openRecordInNewWindow('new-return', ret.id)}
-                      className="font-bold hover:text-blue-800 text-left block"
-                    >
-                      {ret.id}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button 
+                        onClick={() => openRecordInNewWindow('new-return', ret.id)}
+                        className="font-bold hover:text-blue-800 text-left block"
+                      >
+                        {ret.id}
+                      </button>
+                      {ret.status === 'DRAFT' && <span className="px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded text-[9px] uppercase tracking-wider font-bold no-underline">Draft</span>}
+                    </div>
                   </td>
                   <td className="p-4 text-sm text-slate-600">{formatDate(ret.date)}</td>
                   <td className="p-4 text-sm font-medium">
@@ -7686,9 +8025,9 @@ const PrintLabelsOverlay = () => {
                 <div className="flex flex-col">
                   <span className="text-[10px] uppercase font-bold text-blue-600 mb-0.5">Deliver To (Consignee)</span>
                   <span className="font-black text-xl uppercase leading-none mb-1">{printingReceipt.consignee}</span>
-                  <span className="text-sm font-semibold text-slate-800 leading-snug max-h-16 overflow-hidden whitespace-pre-wrap">{printingReceipt.consigneeDeliveryAddress.replace(/\n/g, ', ')}</span>
+                  <span className="text-sm font-semibold text-slate-800 leading-snug max-h-32 overflow-hidden whitespace-pre-wrap">{printingReceipt.consigneeDeliveryAddress}</span>
                 </div>
-                <div className="flex flex-col pt-2 border-t border-dashed border-slate-300">
+                <div className="flex flex-col pt-3 border-t border-dashed border-slate-300">
                   <span className="text-[10px] uppercase font-semibold text-slate-500">Cargo Details</span>
                   <span className="font-bold text-sm uppercase truncate leading-tight">{pkg.product || 'UNNAMED'}</span>
                   <div className="flex justify-between mt-1 text-[10px] font-mono text-slate-700">
@@ -7814,7 +8153,6 @@ const PrintA4Overlay = () => {
                             <div className="flex justify-between"><span>Generated Date:</span> <span className="font-semibold">{new Date().toLocaleDateString('en-GB')}</span></div>
                             <div className="flex justify-between"><span>Type:</span> <span className="font-semibold">{printingA4Receipt.transactionType}</span></div>
                             <div className="flex justify-between"><span>Routing:</span> <span className="font-semibold">{printingA4Receipt.pol || '-'} to {printingA4Receipt.pod || '-'}</span></div>
-                            <div className="flex justify-between"><span>MBL/Booking No:</span> <span className="font-semibold">{printingA4Receipt.blNo || '-'} / {printingA4Receipt.bookingNo || '-'}</span></div>
                             <div className="flex justify-between"><span>Shipper DO Ref:</span> <span className="font-semibold">{printingA4Receipt.shipperDoNo || '-'}</span></div>
                           </div>
                         </div>
@@ -7840,6 +8178,16 @@ const PrintA4Overlay = () => {
                               <tr key={idx}><td className="p-2 border">{line.product}</td><td className="p-2 border text-center">{line.qty} {line.uom}</td><td className="p-2 border text-right">{line.weight}</td><td className="p-2 border text-right">{((parseFloat(line.weight) || 0) * (parseInt(line.qty) || 0)).toFixed(2)}</td><td className="p-2 border text-right">{(line.cbm || 0).toFixed(3)}</td></tr>
                             ))}
                           </tbody>
+                          {pageIdx === totalPages - 1 && (
+                            <tfoot className="bg-slate-50 font-bold border-t-2 border-slate-300">
+                              <tr>
+                                <td colSpan={2} className="p-2 text-right text-slate-700">TOTAL:</td>
+                                <td className="p-2 border text-right"></td>
+                                <td className="p-2 border text-right text-slate-800">{(printingA4Receipt.totalWeight || 0).toFixed(2)}</td>
+                                <td className="p-2 border text-right text-slate-800">{(printingA4Receipt.totalCBM || 0).toFixed(3)}</td>
+                              </tr>
+                            </tfoot>
+                          )}
                         </table>
                       </div>
                     </td>
@@ -8559,17 +8907,20 @@ const StorageServiceView = () => {
   }
   const totalSellingPrice = inboundCharge + mainStorageCharge;
 
-  const saveEntry = async () => {
-    if (!formData.customerId || formData.lines.length === 0) {
-      return showMessage("Customer and at least one item are required.", "error");
-    }
+  const saveEntry = async (isDraft = false) => {
+    if (!isDraft) {
+      if (!formData.customerId || formData.lines.length === 0) {
+        return showMessage("Customer and at least one item are required.", "error");
+      }
 
-    if (formData.isStackable && (!formData.stackingLayer || formData.stackingLayer < 1)) {
-      return showMessage("Stacking layer MUST be at least 1.", "error");
+      if (formData.isStackable && (!formData.stackingLayer || formData.stackingLayer < 1)) {
+        return showMessage("Stacking layer MUST be at least 1.", "error");
+      }
     }
 
     const finalData = {
       ...formData,
+      status: isDraft ? 'DRAFT' : 'NEW',
       totalCbm: totals.cbm,
       totalSqft: effectiveSqft,
       totalQty: totals.qty,
@@ -8794,9 +9145,14 @@ const StorageServiceView = () => {
                   )}
                 </div>
 
-                <button onClick={saveEntry} className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold shadow-lg hover:bg-blue-700 active:scale-[0.98] transition flex items-center justify-center gap-2">
-                  <Save className="w-5 h-5" /> Save Record
-                </button>
+                <div className="flex gap-3 w-full">
+                  <button onClick={() => saveEntry(true)} className="flex-1 bg-white border-2 border-blue-600 text-blue-600 py-3 rounded-lg font-bold hover:bg-blue-50 active:scale-[0.98] transition flex items-center justify-center gap-2">
+                    <Save className="w-5 h-5" /> Save as Draft
+                  </button>
+                  <button onClick={() => saveEntry(false)} className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold shadow-lg hover:bg-blue-700 active:scale-[0.98] transition flex items-center justify-center gap-2">
+                    <Save className="w-5 h-5" /> Save Record
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -8843,7 +9199,10 @@ const StorageServiceView = () => {
                 <tr><td colSpan={8} className="p-10 text-center text-slate-400 italic">No storage records found.</td></tr>
               ) : storageEntries.map(e => (
                 <tr key={e.id} className="hover:bg-indigo-50/30 transition-colors">
-                  <td className="p-4 text-sm font-bold text-indigo-700 font-mono italic">{e.id}</td>
+                  <td className="p-4 text-sm font-bold text-indigo-700 font-mono italic">
+                    {e.id}
+                    {e.status === 'DRAFT' && <span className="ml-2 px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded text-[9px] uppercase tracking-wider not-italic">Draft</span>}
+                  </td>
                   <td className="p-4 text-sm text-slate-600">{formatDate(e.dateIn)}</td>
                   <td className="p-4 text-sm font-semibold text-slate-700">{(companies.find(c => c.id === e.customerId)?.name || e.customerId)}</td>
                   <td className="p-4 text-sm text-center font-bold text-slate-800">{e.totalQty || 0}</td>
@@ -9703,11 +10062,11 @@ export default function App() {
     const resetTimer = () => {
       clearTimeout(timeoutId);
       if (currentUser) {
-        // 10 minutes = 600,000 ms
+        // 1 hour = 3,600,000 ms
         timeoutId = setTimeout(() => {
           handleAuthLogout();
           showMessage('You have been logged out due to inactivity.', 'error');
-        }, 600000);
+        }, 3600000);
       }
     };
 
@@ -9882,6 +10241,7 @@ export default function App() {
   // Master Data State
   const [companies, setCompanies] = useState([]);
   const [ports, setPorts] = useState([]);
+  const [depots, setDepots] = useState([]);
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
@@ -9983,7 +10343,8 @@ export default function App() {
       { path: 'users', setter: setUsers },
       { path: 'roles', setter: setRoles },
       { path: 'companies', setter: setCompanies },
-      { path: 'ports', setter: setPorts }
+      { path: 'ports', setter: setPorts },
+      { path: 'depots', setter: setDepots }
     ];
 
     const unsubscribers = essentialCollections.map(col => {
@@ -10282,6 +10643,7 @@ export default function App() {
     miscChargeTypes, setMiscChargeTypes, uoms, setUoms,
     companies, setCompanies,
     ports, setPorts,
+    depots, setDepots,
     users, setUsers,
     roles, setRoles,
     warehouses, setWarehouses,

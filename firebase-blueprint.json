@@ -105,6 +105,18 @@
       },
       "required": ["id", "name"]
     },
+    "Depot": {
+      "title": "Container Depot",
+      "description": "Represents a container depot assigned to a port.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "portId": { "type": "string" },
+        "address": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
     "User": {
       "title": "System User",
       "description": "Represents an application user.",
@@ -372,6 +384,7 @@
     "manifests": { "schema": "Manifest", "description": "Loading manifests" },
     "companies": { "schema": "Company", "description": "Business partners master data" },
     "ports": { "schema": "Port", "description": "Ports master data" },
+    "depots": { "schema": "Depot", "description": "Container depots master data" },
     "users": { "schema": "User", "description": "System users master data" },
     "roles": { "schema": "Role", "description": "User roles and permissions" },
     "warehouses": { "schema": "Warehouse", "description": "Warehouses master data" },

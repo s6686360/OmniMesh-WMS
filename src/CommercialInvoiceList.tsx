@@ -95,12 +95,15 @@ export const CommercialInvoiceList = ({ AppContext }) => {
                   {(groupInvoices as typeof filtered).map(ci => (
                     <tr key={ci.id} className="hover:bg-slate-50">
                       <td className="p-4 font-bold text-slate-800">
-                        <button 
-                          onClick={() => openRecordInNewWindow('new-commercial-invoice', ci.id)}
-                          className="text-blue-600 underline hover:text-blue-800 text-left font-bold"
-                        >
-                          {ci.id}
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button 
+                            onClick={() => openRecordInNewWindow('new-commercial-invoice', ci.id)}
+                            className="text-blue-600 underline hover:text-blue-800 text-left font-bold"
+                          >
+                            {ci.id}
+                          </button>
+                          {ci.status === 'DRAFT' && <span className="px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded text-[9px] uppercase tracking-wider font-bold">Draft</span>}
+                        </div>
                       </td>
                       <td className="p-4 text-sm text-slate-600">
                         <div className="flex flex-wrap gap-1 mb-1">
