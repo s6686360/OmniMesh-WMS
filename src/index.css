@@ -73,8 +73,29 @@
     padding: 0 !important;
   }
 
+  /* Reset print wrappers to avoid layout shifting or downscaling */
+  #a4-print-area, #print-area {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   /* Dynamically show CSS page counter in print footers */
   .print-page-number::after {
     content: "Page " counter(page) " of " counter(pages);
   }
 }
+
+/* Global support for screen preview and PDF generators */
+.display-table-header-group {
+  display: table-header-group !important;
+}
+.display-table-row-group {
+  display: table-row-group !important;
+}
+.display-table-footer-group {
+  display: table-footer-group !important;
+}
+
