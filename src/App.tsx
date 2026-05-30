@@ -222,8 +222,39 @@ const formatAddress = (addrObj) => {
 const DashboardView = () => {
   const { currentUser, checkAccess, getActiveInventory, manifests, receipts, returns, containerBookings, containerTypes, formatDate, pickups, companies, openRecordInNewWindow, openSearchInNewWindow } = React.useContext(AppContext);
   const [dashboardTimeframe, setDashboardTimeframe] = useState('Month');
+  const [expandedPendingRoute, setExpandedPendingRoute] = useState(null);
+  const [expandedAssignedRoute, setExpandedAssignedRoute] = useState(null);
 
   if (!checkAccess('dashboard', 'view')) return <div className="p-8 text-center text-slate-500">You do not have permission to view the Dashboard.</div>;
+
+  const getCompanyShortName = (companyId) => {
+    if (!companyId) return '-';
+    const c = (companies || []).find(x => x.id === companyId);
+    return c ? (c.shortform || c.name || companyId) : companyId;
+  };
+
+  const groupItemsByReceipt = (items, qtyField) => {
+    const grouped = items.reduce((acc, item) => {
+      if (!acc[item.receiptId]) {
+        acc[item.receiptId] = {
+          receiptId: item.receiptId,
+          customer: item.customer,
+          consignor: item.consignor,
+          consignee: item.consignee,
+          qty: 0,
+          cbm: 0,
+          weight: 0
+        };
+      }
+      const q = parseInt(item[qtyField]) || 0;
+      acc[item.receiptId].qty += q;
+      acc[item.receiptId].cbm += q * (item.unitCbm || 0);
+      acc[item.receiptId].weight += q * (item.unitWeight || 0);
+      return acc;
+    }, {});
+    return Object.values(grouped);
+  };
+
 
   const isWithinTimeframe = (dateStr, tf) => {
     if (!dateStr) return false;
@@ -249,18 +280,25 @@ const DashboardView = () => {
   const pendingByRoute = {};
   inventory.filter(i => i.transactionType === 'LCL Consolidate' && (i.currentQty || 0) > 0).forEach(item => {
     const route = `${item.pol || '-'} → ${item.pod || '-'}`;
-    if (!pendingByRoute[route]) pendingByRoute[route] = { qty: 0, cbm: 0, weight: 0 };
+    if (!pendingByRoute[route]) pendingByRoute[route] = { qty: 0, cbm: 0, weight: 0, items: [] };
     pendingByRoute[route].qty += item.currentQty || 0;
     pendingByRoute[route].cbm += ((item.currentQty || 0) * (item.unitCbm || 0));
     pendingByRoute[route].weight += ((item.currentQty || 0) * (item.unitWeight || 0));
+    pendingByRoute[route].items.push(item);
   });
 
   const assignedByRoute = {};
   (manifests || []).forEach(mnf => {
     if (mnf.type !== 'FCL') {
       const route = `${mnf.pol || '-'} → ${mnf.pod || '-'}`;
-      if (!assignedByRoute[route]) assignedByRoute[route] = { qty: 0, cbm: 0, weight: 0 };
-      assignedByRoute[route].qty += (mnf.lines || []).reduce((s, l) => s + (parseInt(l.loadQty) || 0), 0);
+      if (!assignedByRoute[route]) assignedByRoute[route] = { qty: 0, cbm: 0, weight: 0, items: [] };
+      (mnf.lines || []).forEach(line => {
+        const loadQty = parseInt(line.loadQty) || 0;
+        if (loadQty > 0) {
+           assignedByRoute[route].qty += loadQty;
+           assignedByRoute[route].items.push(line);
+        }
+      });
       assignedByRoute[route].cbm += (mnf.totalCBM || 0);
       assignedByRoute[route].weight += (mnf.totalWeight || 0);
     }
@@ -446,12 +484,56 @@ const DashboardView = () => {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {Object.keys(pendingByRoute).length === 0 ? <tr><td colSpan={4} className="p-6 text-center text-slate-500 text-sm">No pending cargo.</td></tr> : Object.entries(pendingByRoute).map(([route, data]: [string, any]) => (
-                  <tr key={route} className="hover:bg-slate-50">
-                    <td className="p-3 text-sm font-medium text-slate-700"><span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">{route}</span></td>
-                    <td className="p-3 text-sm text-slate-600 text-right">{data.qty}</td>
-                    <td className="p-3 text-sm text-slate-600 text-right font-mono">{data.cbm.toFixed(3)}</td>
-                    <td className="p-3 text-sm text-slate-600 text-right font-mono">{data.weight.toFixed(2)}</td>
-                  </tr>
+                  <React.Fragment key={route}>
+                    <tr className="hover:bg-slate-50 cursor-pointer" onClick={() => setExpandedPendingRoute(expandedPendingRoute === route ? null : route)}>
+                      <td className="p-3 text-sm font-medium text-slate-700 flex items-center">
+                        {expandedPendingRoute === route ? <ChevronDown className="w-4 h-4 mr-2 text-slate-400 shrink-0" /> : <ChevronRight className="w-4 h-4 mr-2 text-slate-400 shrink-0" />}
+                        <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">{route}</span>
+                      </td>
+                      <td className="p-3 text-sm text-slate-600 text-right">{data.qty}</td>
+                      <td className="p-3 text-sm text-slate-600 text-right font-mono">{data.cbm.toFixed(3)}</td>
+                      <td className="p-3 text-sm text-slate-600 text-right font-mono">{data.weight.toFixed(2)}</td>
+                    </tr>
+                    {expandedPendingRoute === route && (
+                      <tr>
+                        <td colSpan={4} className="p-0 bg-slate-50 border-b border-slate-200">
+                          <div className="p-4">
+                            <table className="w-full text-xs text-left">
+                              <thead className="text-slate-500 border-b border-slate-200">
+                                <tr>
+                                  <th className="pb-2 font-semibold">Shipment (SID)</th>
+                                  <th className="pb-2 font-semibold text-right">Qty</th>
+                                  <th className="pb-2 font-semibold text-right">CBM</th>
+                                  <th className="pb-2 font-semibold text-right">Wgt (kg)</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {groupItemsByReceipt(data.items, 'currentQty').map((item: any, idx) => (
+                                  <tr key={idx} className="hover:bg-white border-b border-slate-50 last:border-none">
+                                    <td className="py-2.5" colSpan={4}>
+                                       <div className="flex justify-between items-start w-full">
+                                         <div className="font-mono font-bold text-slate-800">{item.receiptId}</div>
+                                         <div className="flex space-x-6 text-right">
+                                           <div className="text-slate-800 w-16 text-right font-semibold">{item.qty}</div>
+                                           <div className="text-slate-700 font-mono w-16 text-right">{item.cbm.toFixed(3)}</div>
+                                           <div className="text-slate-700 font-mono w-16 text-right">{item.weight.toFixed(2)}</div>
+                                         </div>
+                                       </div>
+                                       <div className="text-[10px] text-slate-500 mt-0.5 flex space-x-4">
+                                         <div><span className="font-semibold text-slate-400">CUS:</span> {getCompanyShortName(item.customer)}</div>
+                                         <div><span className="font-semibold text-slate-400">CSH:</span> {getCompanyShortName(item.consignor)}</div>
+                                         <div><span className="font-semibold text-slate-400">CNE:</span> {getCompanyShortName(item.consignee)}</div>
+                                       </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -468,12 +550,56 @@ const DashboardView = () => {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {Object.keys(assignedByRoute).length === 0 ? <tr><td colSpan={4} className="p-6 text-center text-slate-500 text-sm">No manifests created yet.</td></tr> : Object.entries(assignedByRoute).map(([route, data]: [string, any]) => (
-                  <tr key={route} className="hover:bg-slate-50">
-                    <td className="p-3 text-sm font-medium text-slate-700"><span className="bg-teal-50 text-teal-700 px-2 py-1 rounded">{route}</span></td>
-                    <td className="p-3 text-sm text-slate-600 text-right">{data.qty}</td>
-                    <td className="p-3 text-sm text-slate-600 text-right font-mono">{data.cbm.toFixed(3)}</td>
-                    <td className="p-3 text-sm text-slate-600 text-right font-mono">{data.weight.toFixed(2)}</td>
-                  </tr>
+                  <React.Fragment key={route}>
+                    <tr className="hover:bg-slate-50 cursor-pointer" onClick={() => setExpandedAssignedRoute(expandedAssignedRoute === route ? null : route)}>
+                      <td className="p-3 text-sm font-medium text-slate-700 flex items-center">
+                        {expandedAssignedRoute === route ? <ChevronDown className="w-4 h-4 mr-2 text-slate-400 shrink-0" /> : <ChevronRight className="w-4 h-4 mr-2 text-slate-400 shrink-0" />}
+                        <span className="bg-teal-50 text-teal-700 px-2 py-1 rounded">{route}</span>
+                      </td>
+                      <td className="p-3 text-sm text-slate-600 text-right">{data.qty}</td>
+                      <td className="p-3 text-sm text-slate-600 text-right font-mono">{data.cbm.toFixed(3)}</td>
+                      <td className="p-3 text-sm text-slate-600 text-right font-mono">{data.weight.toFixed(2)}</td>
+                    </tr>
+                    {expandedAssignedRoute === route && (
+                      <tr>
+                        <td colSpan={4} className="p-0 bg-slate-50 border-b border-slate-200">
+                          <div className="p-4">
+                            <table className="w-full text-xs text-left">
+                              <thead className="text-slate-500 border-b border-slate-200">
+                                <tr>
+                                  <th className="pb-2 font-semibold">Shipment (SID)</th>
+                                  <th className="pb-2 font-semibold text-right">Qty</th>
+                                  <th className="pb-2 font-semibold text-right">CBM</th>
+                                  <th className="pb-2 font-semibold text-right">Wgt (kg)</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {groupItemsByReceipt(data.items, 'loadQty').map((item: any, idx) => (
+                                  <tr key={idx} className="hover:bg-white border-b border-slate-50 last:border-none">
+                                    <td className="py-2.5" colSpan={4}>
+                                       <div className="flex justify-between items-start w-full">
+                                         <div className="font-mono font-bold text-slate-800">{item.receiptId}</div>
+                                         <div className="flex space-x-6 text-right">
+                                           <div className="text-slate-800 w-16 text-right font-semibold">{item.qty}</div>
+                                           <div className="text-slate-700 font-mono w-16 text-right">{item.cbm.toFixed(3)}</div>
+                                           <div className="text-slate-700 font-mono w-16 text-right">{item.weight.toFixed(2)}</div>
+                                         </div>
+                                       </div>
+                                       <div className="text-[10px] text-slate-500 mt-0.5 flex space-x-4">
+                                         <div><span className="font-semibold text-slate-400">CUS:</span> {getCompanyShortName(item.customer)}</div>
+                                         <div><span className="font-semibold text-slate-400">CSH:</span> {getCompanyShortName(item.consignor)}</div>
+                                         <div><span className="font-semibold text-slate-400">CNE:</span> {getCompanyShortName(item.consignee)}</div>
+                                       </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -4726,7 +4852,7 @@ const ReceiptForm = () => {
       value = value.toUpperCase();
     }
     setFormData(prev => {
-       const updates = { [e.target.name]: value };
+       const updates: Record<string, any> = { [e.target.name]: value };
        if (e.target.name === 'conditionStatus') {
          if (value === 'Good') {
            updates.grnRemarks = 'RECEIVED IN GOOD CONDITION';
