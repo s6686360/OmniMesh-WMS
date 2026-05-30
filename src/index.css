@@ -16,8 +16,8 @@
 
 @media print {
   @page {
-    size: letter portrait;
-    margin: 15mm 15mm 20mm 15mm;
+    size: A4 portrait;
+    margin: 10mm 15mm 15mm 15mm;
   }
 
   /* Reset all outer layouts to natural scrolling and flow */

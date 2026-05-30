@@ -8175,24 +8175,23 @@ const PrintLabelsOverlay = () => {
   );
 };
 
-const LetterheadHeader = ({ title = '', subtitle = '', rightNode = null, docType = null }) => {
+const LetterheadHeader = ({ title = '', subtitle = '', customLh = null, docType = null }) => {
   const { letterheads } = React.useContext(AppContext);
-  const lh = (letterheads || []).find(l => (l.assignedDocs || []).includes(docType));
+  const lh = customLh || (letterheads || []).find(l => (l.assignedDocs || []).includes(docType));
 
   if (!lh) {
     return (
-      <div className="border-b-2 border-slate-200 pb-6 mb-6 flex justify-between items-end">
+      <div className="border-b-2 border-slate-200 pb-2 mb-4 w-full">
         <div>
           <h1 className="text-4xl font-black">{title || 'COMPANY NAME NAME'}</h1>
-          <p className="text-sm font-bold uppercase mt-1">{subtitle}</p>
         </div>
-        <div className="text-right">{rightNode}</div>
+        <div><p className="text-lg font-bold uppercase text-slate-800 text-center mt-2">{subtitle}</p></div>
       </div>
     );
   }
 
   return (
-    <div className="border-b-2 border-slate-200 pb-4 mb-4 w-full">
+    <div className="border-b-2 border-slate-200 pb-2 mb-4 w-full text-left">
       <div className="flex justify-between items-start mb-2 w-full">
         <div className="w-full">
           <div className="flex items-baseline gap-1.5 flex-wrap">
@@ -8213,7 +8212,6 @@ const LetterheadHeader = ({ title = '', subtitle = '', rightNode = null, docType
              </div>
           )}
         </div>
-        {rightNode && <div className="text-right ml-4 border-l pl-4 border-slate-200 whitespace-nowrap">{rightNode}</div>}
       </div>
       <div><p className="text-lg font-bold uppercase text-slate-800 text-center">{subtitle}</p></div>
     </div>
@@ -8243,7 +8241,7 @@ const PrintA4Overlay = () => {
         <div><h3 className="font-bold text-lg text-slate-800">Print Goods Received Note</h3></div>
         <div className="flex items-center space-x-3">
            <button onClick={() => setPrintingA4Receipt(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-           <button onClick={() => handleGeneratePDF('a4-print-area', `${printingA4Receipt.id}-GRN.pdf`, 'letter', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+           <button onClick={() => handleGeneratePDF('a4-print-area', `${printingA4Receipt.id}-GRN.pdf`, 'a4', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
            <button onClick={handlePrintRequest} className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors">Print</button>
         </div>
       </div>
@@ -8392,7 +8390,7 @@ const PrintPackingListOverlay = () => {
         <div><h3 className="font-bold text-lg text-slate-800">Print Packing List</h3></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingPackingList(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-PL.pdf`, 'letter', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-PL.pdf`, 'a4', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">Print</button>
         </div>
       </div>
@@ -8408,8 +8406,12 @@ const PrintPackingListOverlay = () => {
                       <LetterheadHeader 
                         docType="PackingList" 
                         subtitle="Container Packing List"
-                        rightNode={<><p className="text-sm uppercase font-semibold">Manifest No</p><p className="text-xl font-bold font-mono">{m.id}</p></>}
                       />
+                      
+                      <div className="flex justify-between items-center bg-slate-50 border border-slate-300 px-4 py-2 mt-4 font-mono">
+                        <div><span className="font-bold text-slate-500 uppercase text-xs">Manifest No:</span> <span className="font-bold text-base text-slate-900 ml-2">{m.id}</span></div>
+                        <div><span className="font-bold text-slate-500 uppercase text-xs">Date:</span> <span className="font-bold text-base text-slate-900 ml-2">{formatDate(m.date)}</span></div>
+                      </div>
                       
                       <div className="grid grid-cols-2 gap-4 mb-4 border border-slate-200 p-4 font-mono text-xs bg-white mt-4 text-left">
                         <div>
@@ -8630,7 +8632,7 @@ const PrintDeliveryOrdersOverlay = () => {
         <div><h3 className="font-bold text-lg text-slate-800">Print Delivery Orders</h3><p className="text-sm text-slate-500">Generated {groups.length} distinct D/O pages based on destinations.</p></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingDeliveryOrders(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-DO.pdf`, 'letter', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${m.id}-DO.pdf`, 'a4', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors">Print All D/Os</button>
         </div>
       </div>
@@ -8784,7 +8786,7 @@ const PrintPickupNoteOverlay = () => {
         <div><h3 className="font-bold text-lg text-slate-800">Print Pickup Note</h3></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingPickupNote(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `Pickup-Note.pdf`, 'letter', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `Pickup-Note.pdf`, 'a4', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-indigo-800 text-white rounded hover:bg-indigo-900 transition-colors">Print Pickup Note</button>
         </div>
       </div>
@@ -9373,7 +9375,7 @@ const PrintBookingFormOverlay = () => {
         <div><h3 className="font-bold text-lg text-slate-800">Print Booking Form</h3></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingBookingForm(null)} className="px-4 py-2 border rounded transition-colors hover:bg-slate-50">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${b.id}-Booking.pdf`, 'letter', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${b.id}-Booking.pdf`, 'a4', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">Print To Liner</button>
         </div>
       </div>
@@ -9387,8 +9389,11 @@ const PrintBookingFormOverlay = () => {
                   <LetterheadHeader 
                     docType="BookingForm" 
                     subtitle="Container Booking Request"
-                    rightNode={<><p className="text-sm uppercase font-semibold">Booking Ref</p><p className="text-2xl font-bold font-mono">{b.id}</p></>}
                   />
+                  <div className="flex justify-between items-center bg-slate-50 border border-slate-300 px-4 py-2 my-4 font-mono">
+                    <div><span className="font-bold text-slate-500 uppercase text-xs">Booking Ref:</span> <span className="font-bold text-base text-slate-900 ml-2">{b.id}</span></div>
+                    <div><span className="font-bold text-slate-500 uppercase text-xs">Date:</span> <span className="font-bold text-base text-slate-900 ml-2">{formatDate(b.date)}</span></div>
+                  </div>
                   <div className="h-4"></div>
                 </td>
               </tr>
@@ -9484,7 +9489,7 @@ const PrintCommercialInvoiceOverlay = () => {
         </div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingCommercialInvoice(null)} className="px-4 py-2 border rounded font-medium text-slate-600 hover:bg-slate-50">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${printingCommercialInvoice.id}-CIPL.pdf`, 'letter', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors font-medium">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${printingCommercialInvoice.id}-CIPL.pdf`, 'a4', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors font-medium">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-emerald-600 text-white rounded font-medium shadow-sm hover:bg-emerald-700 flex items-center">
             <Printer className="w-4 h-4 mr-2" /> Print CI/PL
           </button>
@@ -9500,19 +9505,14 @@ const PrintCommercialInvoiceOverlay = () => {
                 <td className="border-none p-0">
                   <LetterheadHeader 
                     docType="CIPL" 
-                    title={declCompany.name}
+                    customLh={declCompany}
                     subtitle=""
-                    rightNode={
-                      <div className="text-right">
-                        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-widest mb-1">Invoice</h2>
-                        <div className="text-[10px] space-y-0.5">
-                           <div><span className="font-semibold text-black">Invoice No:</span> <span className="font-bold">{ci.id}</span></div>
-                           <div><span className="font-semibold text-black">Date:</span> <span className="font-bold">{ci.invoiceDate}</span></div>
-                           {ci.poNumber && <div><span className="font-semibold text-black">PO No:</span> <span className="font-bold">{ci.poNumber}</span></div>}
-                        </div>
-                      </div>
-                    }
                   />
+                  <div className="flex justify-between items-center bg-slate-50 border border-slate-300 px-4 py-2 mt-4 font-mono">
+                    <div><span className="font-bold text-slate-500 uppercase text-[10px]">Invoice No:</span> <span className="font-bold text-base text-slate-900 ml-2">{ci.id}</span></div>
+                    <div><span className="font-bold text-slate-500 uppercase text-[10px]">Date:</span> <span className="font-bold text-base text-slate-900 ml-2">{ci.invoiceDate}</span></div>
+                    {ci.poNumber && <div><span className="font-bold text-slate-500 uppercase text-[10px]">PO No:</span> <span className="font-bold text-base text-slate-900 ml-2">{ci.poNumber}</span></div>}
+                  </div>
 
                   <div className="text-center font-bold text-sm my-4 tracking-widest uppercase border-y border-slate-300 py-1 bg-white">Commercial Invoice / Packing List</div>
 
@@ -9671,7 +9671,7 @@ const PrintReturnNoteOverlay = () => {
         <div><h3 className="font-bold text-lg text-slate-800">Print Return Note</h3></div>
         <div className="flex items-center space-x-3">
           <button onClick={() => setPrintingReturnNote(null)} className="px-4 py-2 border rounded hover:bg-slate-50 transition-colors">Close</button>
-          <button onClick={() => handleGeneratePDF('a4-print-area', `${ret.id}-ReturnNote.pdf`, 'letter', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
+          <button onClick={() => handleGeneratePDF('a4-print-area', `${ret.id}-ReturnNote.pdf`, 'a4', 0)} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">PDF</button>
           <button onClick={handlePrintRequest} className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors">Print Return Note</button>
         </div>
       </div>
@@ -9700,13 +9700,11 @@ const PrintReturnNoteOverlay = () => {
                         <LetterheadHeader 
                           docType="ReturnNote" 
                           subtitle="RETURN NOTE"
-                          rightNode={
-                            <div className="text-right">
-                              <p className="font-mono text-lg font-bold text-orange-700">{ret.id}</p>
-                              <p className="font-mono text-sm font-semibold">{formatDate(ret.date)}</p>
-                            </div>
-                          }
                         />
+                        <div className="flex justify-between items-center bg-orange-50 border border-orange-200 px-4 py-2 mt-4 font-mono">
+                          <div><span className="font-bold text-orange-900 uppercase text-[10px]">Return No:</span> <span className="font-bold text-base text-orange-700 ml-2">{ret.id}</span></div>
+                          <div><span className="font-bold text-orange-900 uppercase text-[10px]">Date:</span> <span className="font-bold text-base text-orange-700 ml-2">{formatDate(ret.date)}</span></div>
+                        </div>
 
                         <div className="grid grid-cols-3 gap-6 mb-4 mt-4 text-xs">
                           <div className="border p-3 border-slate-300 rounded bg-white">
@@ -10564,7 +10562,7 @@ export default function App() {
     }
   };
 
-  const handleGeneratePDF = (elementId, filename = 'document.pdf', format = 'letter', margin = 10) => {
+  const handleGeneratePDF = (elementId, filename = 'document.pdf', format = 'a4', margin = 10) => {
     import('html2pdf.js').then((module) => {
       const html2pdf = (module.default ? module.default : module) as any;
       const element = document.getElementById(elementId);
